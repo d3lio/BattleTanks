@@ -1,1 +1,7 @@
+# Common ignores
 target
+Cargo.lock
+
+# User specific ignores
+.vscode
+*.sublime*
