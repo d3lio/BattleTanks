@@ -1,0 +1,8 @@
+[package]
+name = "engine"
+version = "0.1.0"
+authors = [
+    "Delyan Dobrev <delqn.dobrev@gmail.com>",
+    "Nikola Stoyanov <ns.barzakov@gmail.com>"]
+
+[dependencies]

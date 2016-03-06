@@ -6,3 +6,4 @@ authors = [
     "Nikola Stoyanov <ns.barzakov@gmail.com>"]
 
 [dependencies]
+engine = {path = "../engine"}
