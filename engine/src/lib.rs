@@ -1,3 +1,5 @@
+pub mod shader_loader;
+
 extern crate glfw;
 
 use glfw::{Action, Context, Key};
