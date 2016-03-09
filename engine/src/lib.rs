@@ -1,4 +1,4 @@
-pub mod shader_loader;
+pub mod gliw;
 
 extern crate glfw;
 
