@@ -4,7 +4,7 @@ use std::ffi::CString;
 use std::ptr;
 use super::{Shader, ShaderType};
 
-/// Wrapper around a linked OpenGL program
+/// Wrapper for a linked OpenGL program
 ///
 /// Created using `ProgramBuilder` or `ProgramFromFileBuilder`
 pub struct Program {
@@ -12,6 +12,12 @@ pub struct Program {
 }
 
 impl Program {
+    /// The engine's equivalent to glUseProgram
+    pub fn bind(&self) {
+        unsafe { gl::UseProgram(self.handle) };
+    }
+
+    /// Get the underlying OpenGL handle
     pub fn handle(&self) -> u32 {
         return self.handle;
     }
