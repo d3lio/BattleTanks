@@ -9,17 +9,16 @@ use engine::gliw::{
     Shader, ShaderType,
     Program, ProgramBuilder
 };
-use cgmath::{ Matrix, Angle, Point3, Vector3, Matrix4, Deg, SquareMatrix };
-use glfw::{ Action, Context, Key };
-
+use cgmath::{Matrix, Angle, Point3, Vector3, Matrix4, Deg, SquareMatrix};
+use glfw::{Action, Context, Key};
 
 use std::ptr;
 use std::ffi::CString;
 
 static VERTEX_DATA: [f32; 9] = [
-     0.0,  0.5, 0.0,
-     0.5, -0.5, 0.0,
-    -0.5, -0.5, 0.0
+    -1.0, -1.0, 0.0,
+    1.0, -1.0, 0.0,
+    0.0,  1.0, 0.0,
 ];
 
 static VS_SRC: &'static str =
@@ -39,6 +38,7 @@ static FS_SRC: &'static str =
 
 struct SimpleEntity {
     vao: Vao,
+    vbos: Vec<Vbo>,
     program: Program,
     mvp_matrix: Matrix4<f32>,
     mvp_location: i32
@@ -56,24 +56,30 @@ impl /*Entity for*/ SimpleEntity {
 
         let mut obj = SimpleEntity {
             vao: Vao::new(),
+            vbos: Vec::<Vbo>::new(),
             program: program,
             mvp_matrix: Matrix4::<f32>::identity(),
             mvp_location: 0
         };
 
-        obj.vao.add_vbo(
+        obj.vao.bind();
+        obj.vbos.push(
             Vbo::new_from_data(
                 &VERTEX_DATA,
                 BufferType::Array,
                 BufferUsagePattern::StaticDraw));
 
-        let model_matrix = Matrix4::from_translation(Vector3::<f32>::new(0.0, 0.0, 0.0));
+        let model_matrix = Matrix4::from_translation(
+            Vector3::<f32>::new(0.0, 0.0, 0.0));
+
         let view_matrix = Matrix4::look_at(
-                Point3::<f32>::new(0.0, 0.0, 1.0),
-                Point3::<f32>::new(0.0, 0.0, 0.0),
-                Vector3::<f32>::new(0.0, 1.0, 0.0)
-            );
-        let proj_matrix = cgmath::perspective(Deg::new(60.0), 4.0/3.0, 0.01, 100.0);
+            Point3::<f32>::new(0.0, 0.0, 2.0),
+            Point3::<f32>::new(0.0, 0.0, 0.0),
+            Vector3::<f32>::new(0.0, 1.0, 0.0));
+
+        let proj_matrix = cgmath::perspective(
+            Deg::new(45.0), 4.0/3.0, 0.01, 100.0);
+
         obj.mvp_matrix = proj_matrix * view_matrix * model_matrix;
 
         unsafe {
@@ -92,7 +98,7 @@ impl /*Entity for*/ SimpleEntity {
             let attrib_location = 0;
 
             gl::EnableVertexAttribArray(attrib_location);
-            self.vao.bind_all();
+            self.vbos[0].bind();
             gl::VertexAttribPointer(attrib_location, 3, gl::FLOAT, gl::FALSE, 0, ptr::null());
 
             gl::DrawArrays(gl::TRIANGLES, 0, 3);
@@ -103,10 +109,8 @@ impl /*Entity for*/ SimpleEntity {
 }
 
 fn main() {
-    // Init glfw
     let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
 
-    // Create a window
     glfw.window_hint(glfw::WindowHint::ContextVersion(3, 3));
     glfw.window_hint(glfw::WindowHint::OpenGlProfile(glfw::OpenGlProfileHint::Core));
 
@@ -123,19 +127,14 @@ fn main() {
 
     gl::load_with(|symbol| window.get_proc_address(symbol) as *const _);
 
-    unsafe {
-        gl::ClearColor(0.0, 0.0, 0.4, 0.0);
-    }
+    unsafe { gl::ClearColor(0.0, 0.0, 0.4, 0.0); }
 
-    let obj = SimpleEntity::new();
+    let entity = SimpleEntity::new();
 
     while !window.should_close() {
-        unsafe {
-            // Clear the screen to black
-            gl::Clear(gl::COLOR_BUFFER_BIT);
+        unsafe { gl::Clear(gl::COLOR_BUFFER_BIT); }
 
-            obj.draw_self();
-        }
+        entity.draw_self();
 
         window.swap_buffers();
 

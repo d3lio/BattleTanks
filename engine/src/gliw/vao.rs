@@ -1,21 +1,8 @@
 extern crate gl;
 
-use super::vbo::Vbo;
-
 /// Wrapper for OpenGL VAO
-///
-/// #Example
-/// ```no_run
-/// let vao = Vao::new();
-/// vao.add_vbo(
-///     Vbo::new_from_data(
-///         &VERTEX_DATA,
-///         BufferType::Array,
-///         BufferUsagePattern::StaticDraw));
-/// ```
 pub struct Vao {
-    handle: u32,
-    vbos: Vec<Vbo>
+    handle: u32
 }
 
 impl Vao {
@@ -24,8 +11,7 @@ impl Vao {
     /// Does NOT bind self
     pub fn new() -> Vao {
         let mut vao = Vao {
-            handle: 0,
-            vbos: Vec::<Vbo>::new()
+            handle: 0
         };
 
         unsafe { gl::GenVertexArrays(1, &mut vao.handle as *mut u32) }
@@ -33,30 +19,9 @@ impl Vao {
         return vao;
     }
 
-    /// Adds a VBO to the VAO's vector
-    pub fn add_vbo(&mut self, vbo: Vbo) -> &Self {
-        self.bind();
-        self.vbos.push(vbo);
-        return self;
-    }
-
-    /// Get a VBO by index in the order it was added
-    pub fn get_vbo(&self, idx: usize) -> &Vbo {
-        return &self.vbos[idx];
-    }
-
-    /// Bind the VAO only
+    /// The engine's eqivalent to glBindVertexArray
     pub fn bind(&self) {
         unsafe { gl::BindVertexArray(self.handle); }
-    }
-
-    /// Bind the VAO and all of it's VBOs
-    pub fn bind_all(&self) {
-        self.bind();
-
-        for vbo in &self.vbos {
-            vbo.bind();
-        }
     }
 }
 
