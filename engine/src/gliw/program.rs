@@ -2,7 +2,7 @@ extern crate gl;
 
 use std::ffi::CString;
 use std::ptr;
-use super::{Shader, ShaderType};
+use gliw::{Shader, ShaderType};
 
 /// Wrapper around a linked OpenGL program
 ///
