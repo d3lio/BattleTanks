@@ -1,8 +1,9 @@
 extern crate gl;
 
+use gliw::{Vao, Vbo, Program};
+
 use std::ffi::CString;
 use std::os::raw::c_void;
-use gliw::Program;
 
 #[allow(non_camel_case_types)]
 pub enum AttribFloatFormat {
@@ -37,13 +38,17 @@ pub enum AttribIntFormat {
 }
 
 /// Wrapper around an OpenGL attribute location.
-pub struct AttribLocation {
+pub struct VertexAttrib {
     handle: i32,
 }
 
-impl AttribLocation {
-    // pub fn new(handle) -> AttribLocation {
-    // }
+impl VertexAttrib {
+    // TODO: doc
+    pub fn new(handle: i32) -> VertexAttrib {
+        return VertexAttrib {
+            handle: handle,
+        };
+    }
 
     pub fn handle(&self) -> i32 {
         return self.handle;
@@ -51,9 +56,9 @@ impl AttribLocation {
 
     // TODO: doc
     /// Wrapper for `glVertexAttribPointer`
-    pub fn data_float_format(&self, /*vao: &Vao, vbo: &Vbo,*/ format: AttribFloatFormat, stride: i32, offset: *const c_void) {
-        // vao.bind();
-        // vbo.bind();
+    pub fn data_float_format(&self, vao: &Vao, vbo: &Vbo, format: AttribFloatFormat, stride: i32, offset: *const c_void) {
+        vao.bind();
+        vbo.bind();
 
         if stride < 0 {
             panic!("stride cannot be negative");
@@ -86,9 +91,9 @@ impl AttribLocation {
 
     // TODO: doc
     /// Wrapper for `glVertexAttribIPointer`
-    pub fn data_int_format(&self, /*vao: &Vao, vbo: &Vbo,*/ format: AttribIntFormat, stride: i32, offset: *const c_void) {
-        // vao.bind();
-        // vbo.bind();
+    pub fn data_int_format(&self, vao: &Vao, vbo: &Vbo, format: AttribIntFormat, stride: i32, offset: *const c_void) {
+        vao.bind();
+        vbo.bind();
 
         if stride < 0 {
             panic!("stride cannot be negative");
@@ -105,18 +110,28 @@ impl AttribLocation {
             _ => { panic!("invalid data format - size must be between 1 and 4"); },
         }
     }
+
+    pub fn enable(&self, vao: &Vao) {
+        vao.bind();
+        unsafe { gl::EnableVertexAttribArray(self.handle as u32); }
+    }
+
+    pub fn disable(&self, vao: &Vao) {
+        vao.bind();
+        unsafe { gl::DisableVertexAttribArray(self.handle as u32); }
+    }
 }
 
 impl Program {
     /// Wrapper for glGetAttribLocation()
-    pub fn get_attrib_loc(&self, name: &str) -> AttribLocation {
+    pub fn get_attrib_loc(&self, name: &str) -> VertexAttrib {
         unsafe {
             let loc = gl::GetAttribLocation(self.handle(), CString::new(name).unwrap().as_ptr());
 
             // Note that `loc == -1` means that either no variable with name `name` exists,
             // or that it exists but is unused, so it has been optimised out by the driver.
             // Because of this we can't give static guarantees like most other wrapper objects
-            return AttribLocation {
+            return VertexAttrib {
                 handle: loc,
             }
         }
