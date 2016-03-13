@@ -19,13 +19,13 @@ pub enum AttribFloatFormat {
     Double(i32),
     Fixed(i32),
 
-    Int_2_10_10_10_Rev(bool),   // size = 4
-    Uint_2_10_10_10_Rev(bool),  // size = 4
-    Uint_10f_11f_11f_Rev(bool), // size = 3
+    Int_2_10_10_10_Rev(bool),
+    Uint_2_10_10_10_Rev(bool),
+    Uint_10f_11f_11f_Rev(bool),
 
-    Ubyte_BGRA,                 // size = GL_BGRA, normalized = false
-    Int_2_10_10_10_Rev_BGRA,    // size = GL_BGRA, normalized = false
-    Uint_2_10_10_10_Rev_BGRA,   // size = GL_BGRA, normalized = false
+    Ubyte_BGRA,
+    Int_2_10_10_10_Rev_BGRA,
+    Uint_2_10_10_10_Rev_BGRA,
 }
 
 pub enum AttribIntFormat {
@@ -43,26 +43,65 @@ pub struct VertexAttrib {
 }
 
 impl VertexAttrib {
-    // TODO: doc
+    /// Create a `VertexAttrib` directly from a given handle.
+    ///
+    /// Use only if you have specified the location yourself, for example by
+    /// using GLSL layout qualifiers `layout(location=<index>)`
     pub fn new(handle: i32) -> VertexAttrib {
         return VertexAttrib {
             handle: handle,
         };
     }
 
-    pub fn handle(&self) -> i32 {
-        return self.handle;
-    }
-
-    // TODO: doc
     /// Wrapper for `glVertexAttribPointer`
+    ///
+    /// Specifies the format in which data from `vbo` will be read for the vertex attribute.
+    /// Use this function for floating point vertex attributes - `float`, `double`, `vec*`, `dvec*`, `mat*`
+    ///
+    /// # Examples
+    ///
+    /// Populate a shader variable of type `vec3` from a vbo containing `[f32; 3]`
+    ///
+    /// ```no_run
+    /// # use engine::gliw::{VertexAttrib, AttribFloatFormat, Vao, Vbo, BufferType};
+    /// # use std::ptr;
+    /// # let vao = Vao::new();
+    /// # let vbo = Vbo::new(BufferType::Array);
+    /// # let attrib = VertexAttrib::new(-1);
+    /// attrib.data_float_format(&vao, &vbo, AttribFloatFormat::Float(3), 0, ptr::null());
+    /// ```
+    ///
+    /// Populate a shader variable of type `vec3` from a vbo containing `[u8; 3]`, mapping values in the range [0, 255] to [0f, 1f]
+    ///
+    /// ```no_run
+    /// # use engine::gliw::{VertexAttrib, AttribFloatFormat, Vao, Vbo, BufferType};
+    /// # use std::ptr;
+    /// # let vao = Vao::new();
+    /// # let vbo = Vbo::new(BufferType::Array);
+    /// # let attrib = VertexAttrib::new(-1);
+    /// attrib.data_float_format(&vao, &vbo, AttribFloatFormat::Ubyte(3, true), 0, ptr::null());
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// Panics if `stride < 0`. <br>
+    /// Panics if the size of `format` is not between 1 and 4. <br>
+    /// Panics if the attribute hande is greater than or equal to `GL_MAX_VERTEX_ATTRIBS`. <br>
     pub fn data_float_format(&self, vao: &Vao, vbo: &Vbo, format: AttribFloatFormat, stride: i32, offset: *const c_void) {
-        vao.bind();
-        vbo.bind();
-
         if stride < 0 {
             panic!("stride cannot be negative");
         }
+
+        unsafe {
+            let mut max_vertex_attribs: i32 = 0;
+            gl::GetIntegerv(gl::MAX_VERTEX_ATTRIBS, &mut max_vertex_attribs);
+            if self.handle >= max_vertex_attribs {
+                panic!("GL_MAX_VERTEX_ATTRIBS");
+            }
+        }
+
+        vao.bind();
+        vbo.bind();
 
         match format {
             AttribFloatFormat::Byte(size @ 1...4, normalized)    => unsafe { gl::VertexAttribPointer(self.handle as u32, size, gl::BYTE, normalized as u8, stride, offset); },
@@ -89,8 +128,13 @@ impl VertexAttrib {
         }
     }
 
-    // TODO: doc
     /// Wrapper for `glVertexAttribIPointer`
+    ///
+    /// Specifies the format in which data from `vbo` will be read for the vertex attribute. Use this function
+    /// for integer types - `bool`, `int`, `uint`, `bvec*`, `ivec*`, `uvec*`
+    ///
+    /// # Panics
+    /// Same as `data_float_format`
     pub fn data_int_format(&self, vao: &Vao, vbo: &Vbo, format: AttribIntFormat, stride: i32, offset: *const c_void) {
         vao.bind();
         vbo.bind();
@@ -111,14 +155,21 @@ impl VertexAttrib {
         }
     }
 
+    /// Wrapper for `glEnableVertexAttribArray`
     pub fn enable(&self, vao: &Vao) {
         vao.bind();
         unsafe { gl::EnableVertexAttribArray(self.handle as u32); }
     }
 
+    /// Wrapper for `glDisableVertexAttribArray`
     pub fn disable(&self, vao: &Vao) {
         vao.bind();
         unsafe { gl::DisableVertexAttribArray(self.handle as u32); }
+    }
+
+    /// Get the underlying OpenGL handle
+    pub fn handle(&self) -> i32 {
+        return self.handle;
     }
 }
 

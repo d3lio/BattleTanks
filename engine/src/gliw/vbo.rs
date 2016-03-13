@@ -44,8 +44,8 @@ pub enum BufferUsagePattern {
 /// Seperate creation:
 ///
 /// ```no_run
-/// # let VERTEX_DATA: [f32; 9] = [-1.0, -1.0, 0.0, 1.0, -1.0, 0.0, 0.0,  1.0, 0.0];
 /// # use engine::gliw::{Vbo, BufferType, BufferUsagePattern};
+/// # let VERTEX_DATA: [f32; 9] = [-1.0, -1.0, 0.0, 1.0, -1.0, 0.0, 0.0,  1.0, 0.0];
 /// let vbo = Vbo::new(BufferType::Array);
 /// vbo.buffer_data(&VERTEX_DATA, BufferUsagePattern::StaticDraw);
 /// ```
@@ -53,8 +53,8 @@ pub enum BufferUsagePattern {
 /// Combined creation:
 ///
 /// ```no_run
-/// # let VERTEX_DATA: [f32; 9] = [-1.0, -1.0, 0.0, 1.0, -1.0, 0.0, 0.0,  1.0, 0.0];
 /// # use engine::gliw::{Vbo, BufferType, BufferUsagePattern};
+/// # let VERTEX_DATA: [f32; 9] = [-1.0, -1.0, 0.0, 1.0, -1.0, 0.0, 0.0,  1.0, 0.0];
 /// let vbo = Vbo::from_data(
 ///     &VERTEX_DATA,
 ///     BufferType::Array,
