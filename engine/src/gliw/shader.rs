@@ -60,6 +60,7 @@ impl Shader {
         return Self::new(shader_type, &content);
     }
 
+    /// Get the underlying OpenGL handle
     pub fn handle (&self) -> u32 {
         return self.handle;
     }

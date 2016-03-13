@@ -9,7 +9,11 @@ use engine::gliw::{
     Shader, ShaderType,
     Program, ProgramBuilder
 };
-use cgmath::{Matrix, Angle, Point3, Vector3, Matrix4, Deg, SquareMatrix};
+use cgmath::{
+    Matrix, SquareMatrix, Matrix4,
+    Angle, Deg,
+    Vector3, Point3,
+};
 use glfw::{Action, Context, Key};
 
 use std::ptr;
@@ -17,8 +21,8 @@ use std::ffi::CString;
 
 static VERTEX_DATA: [f32; 9] = [
     -1.0, -1.0, 0.0,
-    1.0, -1.0, 0.0,
-    0.0,  1.0, 0.0,
+     1.0, -1.0, 0.0,
+     0.0,  1.0, 0.0,
 ];
 
 static VS_SRC: &'static str =
@@ -64,7 +68,7 @@ impl /*Entity for*/ SimpleEntity {
 
         obj.vao.bind();
         obj.vbos.push(
-            Vbo::new_from_data(
+            Vbo::from_data(
                 &VERTEX_DATA,
                 BufferType::Array,
                 BufferUsagePattern::StaticDraw));
@@ -73,7 +77,7 @@ impl /*Entity for*/ SimpleEntity {
             Vector3::<f32>::new(0.0, 0.0, 0.0));
 
         let view_matrix = Matrix4::look_at(
-            Point3::<f32>::new(0.0, 0.0, 2.0),
+            Point3::<f32>::new(4.0, 3.0, 3.0),
             Point3::<f32>::new(0.0, 0.0, 0.0),
             Vector3::<f32>::new(0.0, 1.0, 0.0));
 
@@ -111,6 +115,7 @@ impl /*Entity for*/ SimpleEntity {
 fn main() {
     let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
 
+    glfw.window_hint(glfw::WindowHint::Samples(4));
     glfw.window_hint(glfw::WindowHint::ContextVersion(3, 3));
     glfw.window_hint(glfw::WindowHint::OpenGlProfile(glfw::OpenGlProfileHint::Core));
 
@@ -121,8 +126,8 @@ fn main() {
             glfw::WindowMode::Windowed)
         .expect("Failed to create GLFW window.");
 
-    window.set_key_polling(true);
     window.make_current();
+    window.set_key_polling(true);
     glfw.set_swap_interval(1);
 
     gl::load_with(|symbol| window.get_proc_address(symbol) as *const _);

@@ -19,9 +19,14 @@ impl Vao {
         return vao;
     }
 
-    /// The engine's eqivalent to glBindVertexArray
+    /// Wrapper for `glBindVertexArray`
     pub fn bind(&self) {
         unsafe { gl::BindVertexArray(self.handle); }
+    }
+
+    /// Get the underlying OpenGL handle
+    pub fn handle(&self) -> u32 {
+        return self.handle;
     }
 }
 

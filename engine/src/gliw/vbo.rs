@@ -1,6 +1,6 @@
 extern crate gl;
 
-use super::error;
+use gliw::error;
 
 use std::mem;
 use std::os::raw::c_void;
@@ -44,6 +44,8 @@ pub enum BufferUsagePattern {
 /// Seperate creation:
 ///
 /// ```no_run
+/// # let VERTEX_DATA: [f32; 9] = [-1.0, -1.0, 0.0, 1.0, -1.0, 0.0, 0.0,  1.0, 0.0];
+/// # use engine::gliw::{Vbo, BufferType, BufferUsagePattern};
 /// let vbo = Vbo::new(BufferType::Array);
 /// vbo.buffer_data(&VERTEX_DATA, BufferUsagePattern::StaticDraw);
 /// ```
@@ -51,7 +53,9 @@ pub enum BufferUsagePattern {
 /// Combined creation:
 ///
 /// ```no_run
-/// let vbo = Vbo::new_from_data(
+/// # let VERTEX_DATA: [f32; 9] = [-1.0, -1.0, 0.0, 1.0, -1.0, 0.0, 0.0,  1.0, 0.0];
+/// # use engine::gliw::{Vbo, BufferType, BufferUsagePattern};
+/// let vbo = Vbo::from_data(
 ///     &VERTEX_DATA,
 ///     BufferType::Array,
 ///     BufferUsagePattern::StaticDraw);
@@ -75,28 +79,28 @@ impl Vbo {
     }
 
     /// Combines new and bind for convenience
-    pub fn new_from_data<T>(vertices: &[T], buf_type: BufferType, usage: BufferUsagePattern) -> Vbo {
+    pub fn from_data<T>(vertices: &[T], buf_type: BufferType, usage: BufferUsagePattern) -> Vbo {
         let vbo = Vbo::new(buf_type);
         vbo.buffer_data(vertices, usage);
 
         return vbo;
     }
 
-    /// The engine's equivalent to glBindBuffer
+    /// Wrapper for `glBindBuffer`
     pub fn bind(&self) {
         unsafe { gl::BindBuffer(self.buf_type as u32, self.handle); }
     }
 
-    /// The engine's equivalent to glBufferData
+    /// The engine's equivalent to `glBufferData`
     ///
-    /// Calls glBindBuffer internally
+    /// Binds self internally
     pub fn buffer_data<T>(&self, vertices: &[T], usage: BufferUsagePattern) {
         self.bind();
         unsafe {
             gl::BufferData(
                 self.buf_type as u32,
                 (vertices.len() * mem::size_of::<T>()) as isize,
-                (&vertices).as_ptr() as *const c_void,
+                vertices.as_ptr() as *const c_void,
                 usage as u32);
             if gl::GetError() == error::GL_OUT_OF_MEMORY.num {
                 panic!(error::GL_OUT_OF_MEMORY.msg);
