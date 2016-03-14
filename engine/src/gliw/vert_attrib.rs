@@ -1,33 +1,66 @@
 extern crate gl;
 
 use gliw::{Vao, Vbo, Program};
+use gliw::error;
 
 use std::ffi::CString;
 use std::os::raw::c_void;
 
+/// Data formats for `VertexAttrib::data_float_format`
+///
+/// All formats are represented by two values:
+///
+///  * `size` - the number of components: 1, 2, 3 or 4
+///  * `normalized` - specifies whether values should be normalized (to the range [-1f; 1f] for signed
+///    or [0f; 1f] for unsigned) or converted directly
+///
+/// For variants where there is only one possible value for `size` or `normalized` those field are not present.
+/// This avoid some of the possibilities to pass invalid values to `data_float_format`.
+///
+/// OpenGL accepts the symbolic constant `GL_BGRA` for size. To use that use one of the *_BGRA enum variants.
+///
 #[allow(non_camel_case_types)]
 pub enum AttribFloatFormat {
+    /// tuple `Byte(size, normalized)`
     Byte(i32, bool),
+    /// tuple `Ubyte(size, normalized)`
     Ubyte(i32, bool),
+    /// tuple `Short(size, normalized)`
     Short(i32, bool),
+    /// tuple `Ushort(size, normalized)`
     Ushort(i32, bool),
+    /// tuple `Int(size, normalized)`
     Int(i32, bool),
+    /// tuple `Uint(size, normalized)`
     Uint(i32, bool),
 
+    /// tuple `HalfFloat(size)`, normalized = false
     HalfFloat(i32),
+    /// tuple `Float(size)`, normalized = false
     Float(i32),
+    /// tuple `Double(size)`, normalized = false
     Double(i32),
+    /// tuple `Fixed(size)`, normalized = false
     Fixed(i32),
 
+    /// tuple `Int_2_10_10_10_Rev(normalized)`, size = 4
     Int_2_10_10_10_Rev(bool),
+    /// tuple `Uint_2_10_10_10_Rev(normalized)`, size = 4
     Uint_2_10_10_10_Rev(bool),
+    /// tuple `Uint_10f_11f_11f_Rev(normalized)`, size = 3
     Uint_10f_11f_11f_Rev(bool),
 
+    /// size = GL_BGRA, normalized = true
     Ubyte_BGRA,
+    /// size = GL_BGRA, normalized = true
     Int_2_10_10_10_Rev_BGRA,
+    /// size = GL_BGRA, normalized = true
     Uint_2_10_10_10_Rev_BGRA,
 }
 
+/// Data formats for `VertexAttrib::data_float_format`
+///
+/// All formats are represented by a tuple with a single field `size` - the number of components: 1, 2, 3 or 4
 pub enum AttribIntFormat {
     Byte(i32),
     Ubyte(i32),
@@ -37,7 +70,12 @@ pub enum AttribIntFormat {
     Uint(i32),
 }
 
-/// Wrapper around an OpenGL attribute location.
+/// Wrapper for an OpenGL attribute location.
+///
+/// Note that this class does not give static guarantees that an actual attribute exists.
+/// This is because the return value of `glGetAttribLocation` is ambiguous - a value of `-1`
+/// can mean that either no variable with the given name exists, or that it exists but is unused,
+/// so it has been optimized out by the driver.
 pub struct VertexAttrib {
     handle: i32,
 }
@@ -89,14 +127,14 @@ impl VertexAttrib {
     /// Panics if the attribute hande is greater than or equal to `GL_MAX_VERTEX_ATTRIBS`. <br>
     pub fn data_float_format(&self, vao: &Vao, vbo: &Vbo, format: AttribFloatFormat, stride: i32, offset: *const c_void) {
         if stride < 0 {
-            panic!("stride cannot be negative");
+            panic!(error::NEGATIVE_STRIDE);
         }
 
         unsafe {
             let mut max_vertex_attribs: i32 = 0;
             gl::GetIntegerv(gl::MAX_VERTEX_ATTRIBS, &mut max_vertex_attribs);
             if self.handle >= max_vertex_attribs {
-                panic!("GL_MAX_VERTEX_ATTRIBS");
+                panic!(error::GL_MAX_VERTEX_ATTRIBS.msg);
             }
         }
 
@@ -124,7 +162,7 @@ impl VertexAttrib {
             AttribFloatFormat::Int_2_10_10_10_Rev_BGRA           => unsafe { gl::VertexAttribPointer(self.handle as u32, gl::BGRA as i32, gl::INT_2_10_10_10_REV, gl::TRUE, stride, offset); },
             AttribFloatFormat::Uint_2_10_10_10_Rev_BGRA          => unsafe { gl::VertexAttribPointer(self.handle as u32, gl::BGRA as i32, gl::UNSIGNED_INT_2_10_10_10_REV, gl::TRUE, stride, offset); },
 
-            _ => { panic!("invalid data format - size must be between 1 and 4"); },
+            _ => { panic!(error::INVALID_DATA_SIZE); },
         }
     }
 
@@ -140,8 +178,17 @@ impl VertexAttrib {
         vbo.bind();
 
         if stride < 0 {
-            panic!("stride cannot be negative");
+            panic!(error::NEGATIVE_STRIDE);
         }
+
+        unsafe {
+            let mut max_vertex_attribs: i32 = 0;
+            gl::GetIntegerv(gl::MAX_VERTEX_ATTRIBS, &mut max_vertex_attribs);
+            if self.handle >= max_vertex_attribs {
+                panic!(error::GL_MAX_VERTEX_ATTRIBS.msg);
+            }
+        }
+
 
         match format {
             AttribIntFormat::Byte(size @ 1...4)    => unsafe { gl::VertexAttribIPointer(self.handle as u32, size, gl::BYTE, stride, offset); },
@@ -151,7 +198,7 @@ impl VertexAttrib {
             AttribIntFormat::Int(size @ 1...4)     => unsafe { gl::VertexAttribIPointer(self.handle as u32, size, gl::INT, stride, offset); },
             AttribIntFormat::Uint(size @ 1...4)    => unsafe { gl::VertexAttribIPointer(self.handle as u32, size, gl::UNSIGNED_INT, stride, offset); },
 
-            _ => { panic!("invalid data format - size must be between 1 and 4"); },
+            _ => { panic!(error::INVALID_DATA_SIZE); },
         }
     }
 
@@ -174,14 +221,10 @@ impl VertexAttrib {
 }
 
 impl Program {
-    /// Wrapper for glGetAttribLocation()
+    /// Wrapper for `glGetAttribLocation`
     pub fn get_attrib_loc(&self, name: &str) -> VertexAttrib {
         unsafe {
             let loc = gl::GetAttribLocation(self.handle(), CString::new(name).unwrap().as_ptr());
-
-            // Note that `loc == -1` means that either no variable with name `name` exists,
-            // or that it exists but is unused, so it has been optimised out by the driver.
-            // Because of this we can't give static guarantees like most other wrapper objects
             return VertexAttrib {
                 handle: loc,
             }
