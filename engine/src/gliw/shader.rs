@@ -16,7 +16,7 @@ pub enum ShaderType {
     Fragment        = gl::FRAGMENT_SHADER,
 }
 
-/// Wrapper for a compiled OpenGL shader object
+/// Wrapper for a compiled OpenGL Shader Object
 pub struct Shader {
     handle: u32,
 }

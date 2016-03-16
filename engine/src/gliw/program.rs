@@ -5,7 +5,7 @@ use gliw::{Shader, ShaderType};
 use std::ffi::CString;
 use std::ptr;
 
-/// Wrapper for a linked OpenGL program
+/// Wrapper for a linked OpenGL Program
 ///
 /// Created using `ProgramBuilder` or `ProgramFromFileBuilder`
 pub struct Program {

@@ -25,20 +25,26 @@ static VERTEX_DATA: [f32; 9] = [
      0.0,  1.0, 0.0,
 ];
 
-static VS_SRC: &'static str =
-   "#version 330 core\n\
-    layout (location = 0) in vec3 position;\n\
-    uniform mat4 mvp;\n\
-    void main() {\n\
-       gl_Position = mvp * vec4(position, 1.0);\n\
-    }";
+static VS_SRC: &'static str = r#"
+    #version 330 core
 
-static FS_SRC: &'static str =
-   "#version 330 core\n\
-    out vec3 color;\n\
-    void main() {\n\
-       color = vec3(1.0, 1.0, 1.0);\n\
-    }";
+    layout (location = 0) in vec3 position;
+    uniform mat4 mvp;
+
+    void main() {
+       gl_Position = mvp * vec4(position, 1.0);
+    }
+"#;
+
+static FS_SRC: &'static str = r#"
+    #version 330 core
+
+    out vec3 color;
+
+    void main() {
+       color = vec3(1.0, 1.0, 1.0);
+    }
+"#;
 
 struct SimpleEntity {
     vao: Vao,

@@ -1,14 +1,15 @@
 extern crate gl;
 
-/// Wrapper for OpenGL VAO
+/// Wrapper for OpenGL Vertex Array Object
+///
+/// # References
+/// * [Vertex Array Object](https://www.opengl.org/wiki/Vertex_Specification#Vertex_Array_Object)
 pub struct Vao {
     handle: u32
 }
 
 impl Vao {
     /// Generates a vertex array
-    ///
-    /// Does NOT bind self
     pub fn new() -> Vao {
         let mut vao = Vao {
             handle: 0

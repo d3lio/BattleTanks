@@ -37,15 +37,15 @@ pub enum BufferUsagePattern {
     DynamicCopy     = gl::DYNAMIC_COPY,
 }
 
-/// Wrapper for OpenGL VBO
+/// Wrapper for OpenGL Vertex Buffer Object
 ///
 /// # Examples
 ///
 /// Seperate creation:
 ///
 /// ```no_run
-/// # let VERTEX_DATA: [f32; 9] = [-1.0, -1.0, 0.0, 1.0, -1.0, 0.0, 0.0,  1.0, 0.0];
 /// # use engine::gliw::{Vbo, BufferType, BufferUsagePattern};
+/// # let VERTEX_DATA: [f32; 9] = [-1.0, -1.0, 0.0, 1.0, -1.0, 0.0, 0.0,  1.0, 0.0];
 /// let vbo = Vbo::new(BufferType::Array);
 /// vbo.buffer_data(&VERTEX_DATA, BufferUsagePattern::StaticDraw);
 /// ```
@@ -53,13 +53,17 @@ pub enum BufferUsagePattern {
 /// Combined creation:
 ///
 /// ```no_run
-/// # let VERTEX_DATA: [f32; 9] = [-1.0, -1.0, 0.0, 1.0, -1.0, 0.0, 0.0,  1.0, 0.0];
 /// # use engine::gliw::{Vbo, BufferType, BufferUsagePattern};
+/// # let VERTEX_DATA: [f32; 9] = [-1.0, -1.0, 0.0, 1.0, -1.0, 0.0, 0.0,  1.0, 0.0];
 /// let vbo = Vbo::from_data(
 ///     &VERTEX_DATA,
 ///     BufferType::Array,
 ///     BufferUsagePattern::StaticDraw);
 /// ```
+///
+/// # References
+/// * [Buffer Object](https://www.opengl.org/wiki/Buffer_Object)
+/// * [Vertex Buffer Object](https://www.opengl.org/wiki/Vertex_Specification#Vertex_Buffer_Object)
 pub struct Vbo {
     handle: u32,
     buf_type: BufferType
@@ -106,6 +110,11 @@ impl Vbo {
                 panic!(error::GL_OUT_OF_MEMORY.msg);
             }
         }
+    }
+
+    /// Get the buffer's type (target)
+    pub fn buf_type(&self) -> BufferType {
+        return self.buf_type;
     }
 
     /// Get the underlying OpenGL handle
