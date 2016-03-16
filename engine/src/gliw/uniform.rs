@@ -4,36 +4,95 @@ use gliw::Program;
 
 use std::ffi::CString;
 
+pub enum UniformData<'a> {
+    /// tuple `Float1(v0)`
+    Float1(f32),
+    /// tuple `Float2(v0, v1)`
+    Float2(f32, f32),
+    /// tuple `Float3(v0, v1, v2)`
+    Float3(f32, f32, f32),
+    /// tuple `Float4(v0, v1, v2, v3)`
+    Float4(f32, f32, f32, f32),
+
+    /// tuple `Int1(v0)`
+    Int1(i32),
+    /// tuple `Int2(v0, v1)`
+    Int2(i32, i32),
+    /// tuple `Int3(v0, v1, v2)`
+    Int3(i32, i32, i32),
+    /// tuple `Int4(v0, v1, v2, v3)`
+    Int4(i32, i32, i32, i32),
+
+    /// tuple `Uint1(v0)`
+    Uint1(u32),
+    /// tuple `Uint2(v0, v1)`
+    Uint2(u32, u32),
+    /// tuple `Uint3(v0, v1, v2)`
+    Uint3(u32, u32, u32),
+    /// tuple `Uint4(v0, v1, v2, v3)`
+    Uint4(u32, u32, u32, u32),
+
+    /// tuple `FloatVec(size, slice)` <br>
+    /// `size` can be 1, 2, 3 or 4 <br>
+    /// `slice` must be a `&[f32]` with lenght multiple of `size`
+    FloatVec(i32, &'a [f32]),
+
+    /// tuple `IntVec(size, slice)` <br>
+    /// `size` can be 1, 2, 3 or 4 <br>
+    /// `slice` must be a `&[i32]` with lenght multiple of `size`
+    IntVec(i32, &'a [i32]),
+
+    /// tuple `UintVec(size, slice)` <br>
+    /// `size` can be 1, 2, 3 or 4 <br>
+    /// `slice` must be a `&[u32]` with lenght multiple of `size`
+    UintVec(i32, &'a [u32]),
+
+    /// tuple `FloatMat(size, transpose, slice)` - an NxN matrix <br>
+    /// `size` can be 2, 3 or 4 <br>
+    /// `transpose` spceifies whether the matrix should be passed to the shader as is or transposed <br>
+    /// `slice` must be a `&[f32]` with lenght muptiple of `size * size`
+    FloatMat(i32, bool, &'a [f32]),
+
+    /// tuple `FloatMatNxM(n, m, transpose, slice)` - an NxM matrix <br>
+    /// `n` and `m` can be 2, 3 or 4 <br>
+    /// `transpose` spceifies whether the matrix should be passed to the shader as is or transposed <br>
+    /// `slice` must be a `&[f32]` with lenght muptiple of `n * m` <br>
+    FloatMatNxM(i32, i32, bool, &'a [f32]),
+}
+
+/// Wrapper for an OpenGL uniform location
+///
+/// Note that this class does not give static guarantees that an actual attribute exists.
+/// This is because the return value of `glGetUniformLocation` is ambiguous - a value of `-1`
+/// can mean that either no variable with the given name exists, or that it exists but is unused,
+/// so it has been optimized out by the driver.
 pub struct Uniform {
     handle: i32,
 }
 
-pub enum UniformData<'a> {
-    Float1(f32),
-    Float2(f32, f32),
-    Float3(f32, f32, f32),
-    Float4(f32, f32, f32, f32),
-
-    Int1(i32),
-    Int2(i32, i32),
-    Int3(i32, i32, i32),
-    Int4(i32, i32, i32, i32),
-
-    Uint1(u32),
-    Uint2(u32, u32),
-    Uint3(u32, u32, u32),
-    Uint4(u32, u32, u32, u32),
-
-    FloatVec(i32, &'a [f32]),
-    IntVec(i32, &'a [i32]),
-    UintVec(i32, &'a [u32]),
-
-    FloatMat(i32, bool, &'a [f32]),
-    FloatMatNxM(i32, i32, bool, &'a [f32]),
-}
-
 impl Uniform {
-    pub fn value<'a> (&'a self, data: UniformData<'a>) {
+    /// Wrapper for `glUniform*` and `glUniformMatrix*`
+    ///
+    /// Sets the value of the uniform variable.
+    ///
+    /// # Panics
+    ///
+    /// if one of `FloatVec`, `IntVec`, `UintVec`, `FloatMat` or `FloatMatNxM` is passed for `data` and the lenght of
+    /// the slice is not a multiple of the size of the type of the uniform variable <br>
+    /// if an invalid size is passed using `FloatVec`, IntVec`, UintVec`, `FloatMat` or `FloatMatNxM` <br>
+    /// if the specified type for `data` does not match the type of the uniform variable
+    ///
+    pub fn value<'a> (&'a self, prog: &Program, data: UniformData<'a>) {
+        // Clear all previous error
+        // this is an unintended side effect, but i don't see a way around it
+        // TODO: we could instead query the type using `glGetUniformIndices` and `glGetActiveUniform`
+        unsafe {
+            while gl::GetError() != gl::NO_ERROR {
+            }
+        }
+
+        prog.bind();
+
         match data {
             UniformData::Float1(x) => unsafe { gl::Uniform1f(self.handle, x); },
             UniformData::Float2(x, y) => unsafe { gl::Uniform2f(self.handle, x, y); },
@@ -150,12 +209,19 @@ impl Uniform {
                 unsafe { gl::UniformMatrix4fv(self.handle, arr.len() as i32 / 16, transpose as u8, arr.as_ptr()); }
             },
 
-            _ => { panic!("invalid data format"); }
+            _ => { panic!(ERR_DATA_FORMAT); }
+        }
+
+        unsafe {
+            if gl::GetError() == gl::INVALID_OPERATION {
+                panic!(ERR_TYPE_MISSMATCH);
+            }
         }
     }
 }
 
 impl Program {
+    /// Wrapper for `glGetUniformLocation`
     pub fn get_uniform_loc(&self, name: &str) -> Uniform {
         unsafe {
             let loc = gl::GetUniformLocation(self.handle(), CString::new(name).unwrap().as_ptr());
@@ -167,4 +233,6 @@ impl Program {
     }
 }
 
-static ERR_ARRAY_SIZE: &'static str = "invalid array size";
+static ERR_ARRAY_SIZE: &'static str = "invalid array size - the lenght of the slice must be a multiple of the size of the type";
+static ERR_DATA_FORMAT: &'static str = "invalid data format";
+static ERR_TYPE_MISSMATCH: &'static str = "specified data does not match the type of the uniform variable as declared in the shader";

@@ -14,7 +14,7 @@ use std::os::raw::c_void;
 ///  * `normalized` - specifies whether values should be normalized (to the range [-1f; 1f] for signed
 ///    or [0f; 1f] for unsigned) or converted directly
 ///
-/// For variants where there is only one possible value for `size` or `normalized` those field are not present.
+/// For variants where there is only one possible value for `size` or `normalized` those field are omitted.
 /// This avoid some of the possibilities to pass invalid values to `data_float_format`.
 ///
 /// OpenGL accepts the symbolic constant `GL_BGRA` for size. To use that use one of the *_BGRA enum variants.
@@ -98,7 +98,6 @@ impl VertexAttrib {
     ///
     /// # Examples
     ///
-    /// Populate a shader variable of type `vec3` from a vbo containing `[f32; 3]`
     ///
     /// ```no_run
     /// # use engine::gliw::{VertexAttrib, AttribFloatFormat, Vao, Vbo, BufferType};
@@ -106,24 +105,17 @@ impl VertexAttrib {
     /// # let vao = Vao::new();
     /// # let vbo = Vbo::new(BufferType::Array);
     /// # let attrib = VertexAttrib::new(-1);
+    /// // Populate a shader variable of type `vec3` from a vbo containing `[f32; 3]`
     /// attrib.data_float_format(&vao, &vbo, AttribFloatFormat::Float(3), 0, ptr::null());
-    /// ```
     ///
-    /// Populate a shader variable of type `vec3` from a vbo containing `[u8; 3]`, mapping values in the range [0, 255] to [0f, 1f]
-    ///
-    /// ```no_run
-    /// # use engine::gliw::{VertexAttrib, AttribFloatFormat, Vao, Vbo, BufferType};
-    /// # use std::ptr;
-    /// # let vao = Vao::new();
-    /// # let vbo = Vbo::new(BufferType::Array);
-    /// # let attrib = VertexAttrib::new(-1);
+    /// // Populate a shader variable of type `vec3` from a vbo containing `[u8; 3]`, mapping values in the range [0, 255] to [0f, 1f]
     /// attrib.data_float_format(&vao, &vbo, AttribFloatFormat::Ubyte(3, true), 0, ptr::null());
     /// ```
     ///
     /// # Panics
     ///
     /// Panics if `stride < 0`. <br>
-    /// Panics if the size of `format` is not between 1 and 4. <br>
+    /// Panics if `size` of `format` is not between 1 and 4. <br>
     /// Panics if the attribute hande is greater than or equal to `GL_MAX_VERTEX_ATTRIBS`. <br>
     pub fn data_float_format(&self, vao: &Vao, vbo: &Vbo, format: AttribFloatFormat, stride: i32, offset: *const c_void) {
         if stride < 0 {
