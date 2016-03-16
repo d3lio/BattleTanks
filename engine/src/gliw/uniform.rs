@@ -233,6 +233,6 @@ impl Program {
     }
 }
 
-static ERR_ARRAY_SIZE: &'static str = "invalid array size - the lenght of the slice must be a multiple of the size of the type";
-static ERR_DATA_FORMAT: &'static str = "invalid data format";
-static ERR_TYPE_MISSMATCH: &'static str = "specified data does not match the type of the uniform variable as declared in the shader";
+const ERR_ARRAY_SIZE: &'static str = "Invalid array size - the lenght of the slice must be a multiple of the size of the type";
+const ERR_DATA_FORMAT: &'static str = "Invalid data format";
+const ERR_TYPE_MISSMATCH: &'static str = "Specified data does not match the type of the uniform variable as declared in the shader";

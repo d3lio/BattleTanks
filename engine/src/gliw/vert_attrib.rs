@@ -119,7 +119,7 @@ impl VertexAttrib {
     /// Panics if the attribute hande is greater than or equal to `GL_MAX_VERTEX_ATTRIBS`. <br>
     pub fn data_float_format(&self, vao: &Vao, vbo: &Vbo, format: AttribFloatFormat, stride: i32, offset: *const c_void) {
         if stride < 0 {
-            panic!(error::NEGATIVE_STRIDE);
+            panic!(NEGATIVE_STRIDE);
         }
 
         unsafe {
@@ -154,7 +154,7 @@ impl VertexAttrib {
             AttribFloatFormat::Int_2_10_10_10_Rev_BGRA           => unsafe { gl::VertexAttribPointer(self.handle as u32, gl::BGRA as i32, gl::INT_2_10_10_10_REV, gl::TRUE, stride, offset); },
             AttribFloatFormat::Uint_2_10_10_10_Rev_BGRA          => unsafe { gl::VertexAttribPointer(self.handle as u32, gl::BGRA as i32, gl::UNSIGNED_INT_2_10_10_10_REV, gl::TRUE, stride, offset); },
 
-            _ => { panic!(error::INVALID_DATA_SIZE); },
+            _ => { panic!(INVALID_DATA_SIZE); },
         }
     }
 
@@ -170,7 +170,7 @@ impl VertexAttrib {
         vbo.bind();
 
         if stride < 0 {
-            panic!(error::NEGATIVE_STRIDE);
+            panic!(NEGATIVE_STRIDE);
         }
 
         unsafe {
@@ -190,7 +190,7 @@ impl VertexAttrib {
             AttribIntFormat::Int(size @ 1...4)     => unsafe { gl::VertexAttribIPointer(self.handle as u32, size, gl::INT, stride, offset); },
             AttribIntFormat::Uint(size @ 1...4)    => unsafe { gl::VertexAttribIPointer(self.handle as u32, size, gl::UNSIGNED_INT, stride, offset); },
 
-            _ => { panic!(error::INVALID_DATA_SIZE); },
+            _ => { panic!(INVALID_DATA_SIZE); },
         }
     }
 
@@ -223,3 +223,6 @@ impl Program {
         }
     }
 }
+
+const NEGATIVE_STRIDE: &'static str = "Stride must be nonnegative";
+const INVALID_DATA_SIZE: &'static str = "Invalid data format - size must be 1, 2, 3 or 4";
