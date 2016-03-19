@@ -6,5 +6,6 @@ pub struct Error {
     pub msg: &'static str
 }
 
-pub const GL_OUT_OF_MEMORY: Error = Error { num: gl::OUT_OF_MEMORY, msg: "OpenGL unable to allocate memory" };
-pub const GL_INVALID_ENUM: Error = Error { num: gl::INVALID_ENUM, msg: "OpenGL invalid enum" };
+pub const GL_OUT_OF_MEMORY: Error = Error { num: gl::OUT_OF_MEMORY, msg: "GL Unable to allocate memory" };
+pub const GL_INVALID_ENUM: Error = Error { num: gl::INVALID_ENUM, msg: "GL Invalid enum" };
+pub const GL_MAX_VERTEX_ATTRIBS: Error = Error { num: gl::MAX_VERTEX_ATTRIBS, msg: "GL Maximum number of vertex attributes exceeded"};
