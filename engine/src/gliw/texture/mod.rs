@@ -1,3 +1,11 @@
+//! Texture module
+
+//mod texture;
+mod tex_builder;
+
+//pub use self::texture::{Texture, TextureType};
+pub use self::tex_builder::{TextureBuilder2D, ImageType, TextureCoordWrap, TextureFilter};
+
 extern crate gl;
 
 use gliw::error;
@@ -48,18 +56,17 @@ impl Texture {
         unsafe { gl::BindTexture(self.tex_type as u32, self.handle); }
     }
 
-    /// Wrapper for `glActiveTexture`
-    ///
-    /// Binds self internally
-    pub fn active_unit(&self, tex_unit: u32) {
-        unsafe {
-            if tex_unit >= gl::MAX_COMBINED_TEXTURE_IMAGE_UNITS {
-                panic!(error::GL_INVALID_ENUM.msg);
-            }
-            gl::ActiveTexture(gl::TEXTURE0 + tex_unit);
-        }
-        self.bind();
-    }
+    /// Passes the texture the the given program and location on tex_unit
+    // pub fn pass_to(&self, prog: Program, location: Uniform, tex_unit: u32) {
+    //     unsafe {
+    //         if tex_unit >= gl::MAX_COMBINED_TEXTURE_IMAGE_UNITS {
+    //             panic!(error::GL_INVALID_ENUM.msg);
+    //         }
+    //         gl::ActiveTexture(gl::TEXTURE0 + tex_unit);
+    //     }
+    //     self.bind();
+    //     location...
+    // }
 
     /// Get the texture's type (target)
     pub fn tex_type(&self) -> TextureType {
@@ -77,3 +84,4 @@ impl Drop for Texture {
         unsafe { gl::DeleteTextures(1, &self.handle); }
     }
 }
+

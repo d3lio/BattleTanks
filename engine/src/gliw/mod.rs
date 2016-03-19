@@ -12,6 +12,6 @@ mod vbo;
 
 pub use self::program::{Program, ProgramBuilder, ProgramFromFileBuilder};
 pub use self::shader::{Shader, ShaderType};
-pub use self::texture::{Texture, TextureType};
+pub use self::texture::{Texture, TextureType, TextureBuilder2D, ImageType, TextureCoordWrap, TextureFilter};
 pub use self::vao::Vao;
 pub use self::vbo::{Vbo, BufferType, BufferUsagePattern};
