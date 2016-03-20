@@ -122,6 +122,7 @@ impl VertexAttrib {
             panic!(NEGATIVE_STRIDE);
         }
 
+        // TODO: is this correct?
         unsafe {
             let mut max_vertex_attribs: i32 = 0;
             gl::GetIntegerv(gl::MAX_VERTEX_ATTRIBS, &mut max_vertex_attribs);

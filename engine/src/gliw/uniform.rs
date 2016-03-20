@@ -66,11 +66,12 @@ pub enum UniformData<'a> {
 /// This is because the return value of `glGetUniformLocation` is ambiguous - a value of `-1`
 /// can mean that either no variable with the given name exists, or that it exists but is unused,
 /// so it has been optimized out by the driver.
-pub struct Uniform {
+pub struct Uniform<'a> {
     handle: i32,
+    prog: &'a Program,
 }
 
-impl Uniform {
+impl<'a> Uniform<'a> {
     /// Wrapper for `glUniform*` and `glUniformMatrix*`
     ///
     /// Sets the value of the uniform variable.
@@ -82,7 +83,7 @@ impl Uniform {
     /// if an invalid size is passed using `FloatVec`, IntVec`, UintVec`, `FloatMat` or `FloatMatNxM` <br>
     /// if the specified type for `data` does not match the type of the uniform variable
     ///
-    pub fn value<'a> (&'a self, prog: &Program, data: UniformData<'a>) {
+    pub fn value<'b> (&'b self, data: UniformData<'b>) {
         // Clear all previous error
         // this is an unintended side effect, but i don't see a way around it
         // TODO: we could instead query the type using `glGetUniformIndices` and `glGetActiveUniform`
@@ -91,7 +92,35 @@ impl Uniform {
             }
         }
 
-        prog.bind();
+        self.prog.bind();
+
+        macro_rules! set_vec_uniform {
+            ($fun:expr, 1, $arr:expr) => (
+                unsafe {
+                    $fun(self.handle, $arr.len() as i32, $arr.as_ptr());
+                }
+            );
+            ($fun:expr, $cnt:expr, $arr:expr) => (
+                unsafe {
+                    if $arr.len() % $cnt != 0 {
+                        panic!(ERR_ARRAY_SIZE);
+                    }
+                    $fun(self.handle, ($arr.len() / $cnt) as i32, $arr.as_ptr());
+                }
+            );
+        }
+
+        macro_rules! set_mat_uniform {
+            ($fun:expr, $n:expr, $m:expr, $transpose:expr, $arr:expr) => (
+                unsafe {
+                    let dim: usize = $n * $m;
+                    if $arr.len() % dim != 0 {
+                        panic!(ERR_ARRAY_SIZE);
+                    }
+                    $fun(self.handle, ($arr.len() / dim) as i32, $transpose as u8, $arr.as_ptr());
+                }
+            );
+        }
 
         match data {
             UniformData::Float1(x) => unsafe { gl::Uniform1f(self.handle, x); },
@@ -109,105 +138,36 @@ impl Uniform {
             UniformData::Uint3(x, y, z) => unsafe { gl::Uniform3ui(self.handle, x, y, z); },
             UniformData::Uint4(x, y, z, w) => unsafe { gl::Uniform4ui(self.handle, x, y, z, w); },
 
-            UniformData::FloatVec(1, arr) => {
-                unsafe { gl::Uniform1fv(self.handle, arr.len() as i32, arr.as_ptr()); }
-            },
-            UniformData::FloatVec(2, arr) => {
-                if arr.len() % 2 != 0 { panic!(ERR_ARRAY_SIZE); }
-                unsafe { gl::Uniform2fv(self.handle, arr.len() as i32 / 2, arr.as_ptr()); }
-            },
-            UniformData::FloatVec(3, arr) => {
-                if arr.len() % 3 != 0 { panic!(ERR_ARRAY_SIZE); }
-                unsafe { gl::Uniform3fv(self.handle, arr.len() as i32 / 3, arr.as_ptr()); }
-            },
-            UniformData::FloatVec(4, arr) => {
-                if arr.len() % 4 != 0 { panic!(ERR_ARRAY_SIZE); }
-                unsafe { gl::Uniform4fv(self.handle, arr.len() as i32 / 4, arr.as_ptr()); }
-            },
+            UniformData::FloatVec(1, arr) => set_vec_uniform!(gl::Uniform1fv, 1, arr),
+            UniformData::FloatVec(2, arr) => set_vec_uniform!(gl::Uniform2fv, 2, arr),
+            UniformData::FloatVec(3, arr) => set_vec_uniform!(gl::Uniform3fv, 3, arr),
+            UniformData::FloatVec(4, arr) => set_vec_uniform!(gl::Uniform4fv, 4, arr),
 
-            UniformData::IntVec(1, arr) => {
-                unsafe { gl::Uniform1iv(self.handle, arr.len() as i32, arr.as_ptr()); }
-            },
-            UniformData::IntVec(2, arr) => {
-                if arr.len() % 2 != 0 { panic!(ERR_ARRAY_SIZE); }
-                unsafe { gl::Uniform2iv(self.handle, arr.len() as i32 / 2, arr.as_ptr()); }
-            },
-            UniformData::IntVec(3, arr) => {
-                if arr.len() % 3 != 0 { panic!(ERR_ARRAY_SIZE); }
-                unsafe { gl::Uniform3iv(self.handle, arr.len() as i32 / 3, arr.as_ptr()); }
-            },
-            UniformData::IntVec(4, arr) => {
-                if arr.len() % 4 != 0 { panic!(ERR_ARRAY_SIZE); }
-                unsafe { gl::Uniform4iv(self.handle, arr.len() as i32 / 4, arr.as_ptr()); }
-            },
+            UniformData::IntVec(1, arr) => set_vec_uniform!(gl::Uniform1iv, 1, arr),
+            UniformData::IntVec(2, arr) => set_vec_uniform!(gl::Uniform2iv, 2, arr),
+            UniformData::IntVec(3, arr) => set_vec_uniform!(gl::Uniform3iv, 3, arr),
+            UniformData::IntVec(4, arr) => set_vec_uniform!(gl::Uniform4iv, 4, arr),
 
-            UniformData::UintVec(1, arr) => {
-                unsafe { gl::Uniform1uiv(self.handle, arr.len() as i32, arr.as_ptr()); }
-            },
-            UniformData::UintVec(2, arr) => {
-                if arr.len() % 2 != 0 { panic!(ERR_ARRAY_SIZE); }
-                unsafe { gl::Uniform2uiv(self.handle, arr.len() as i32 / 2, arr.as_ptr()); }
-            },
-            UniformData::UintVec(3, arr) => {
-                if arr.len() % 3 != 0 { panic!(ERR_ARRAY_SIZE); }
-                unsafe { gl::Uniform3uiv(self.handle, arr.len() as i32 / 3, arr.as_ptr()); }
-            },
-            UniformData::UintVec(4, arr) => {
-                if arr.len() % 4 != 0 { panic!(ERR_ARRAY_SIZE); }
-                unsafe { gl::Uniform4uiv(self.handle, arr.len() as i32 / 4, arr.as_ptr()); }
-            },
+            UniformData::UintVec(1, arr) => set_vec_uniform!(gl::Uniform1uiv, 1, arr),
+            UniformData::UintVec(2, arr) => set_vec_uniform!(gl::Uniform2uiv, 2, arr),
+            UniformData::UintVec(3, arr) => set_vec_uniform!(gl::Uniform3uiv, 3, arr),
+            UniformData::UintVec(4, arr) => set_vec_uniform!(gl::Uniform4uiv, 4, arr),
 
-            UniformData::FloatMat(2, transpose, arr) => {
-                if arr.len() % 4 != 0 { panic!(ERR_ARRAY_SIZE); }
-                unsafe { gl::UniformMatrix2fv(self.handle, arr.len() as i32 / 4, transpose as u8, arr.as_ptr()); }
-            },
-            UniformData::FloatMat(3, transpose, arr) => {
-                if arr.len() % 9 != 0 { panic!(ERR_ARRAY_SIZE); }
-                unsafe { gl::UniformMatrix3fv(self.handle, arr.len() as i32 / 9, transpose as u8, arr.as_ptr()); }
-            },
-            UniformData::FloatMat(4, transpose, arr) => {
-                if arr.len() % 16 != 0 { panic!(ERR_ARRAY_SIZE); }
-                unsafe { gl::UniformMatrix4fv(self.handle, arr.len() as i32 / 16, transpose as u8, arr.as_ptr()); }
-            },
+            UniformData::FloatMat(2, transpose, arr) => set_mat_uniform!(gl::UniformMatrix2fv, 2, 2, transpose, arr),
+            UniformData::FloatMat(3, transpose, arr) => set_mat_uniform!(gl::UniformMatrix3fv, 3, 3, transpose, arr),
+            UniformData::FloatMat(4, transpose, arr) => set_mat_uniform!(gl::UniformMatrix4fv, 4, 4, transpose, arr),
 
-            UniformData::FloatMatNxM(2, 2, transpose, arr) => {
-                if arr.len() % 4 != 0 { panic!(ERR_ARRAY_SIZE); }
-                unsafe { gl::UniformMatrix2fv(self.handle, arr.len() as i32 / 4, transpose as u8, arr.as_ptr()); }
-            },
-            UniformData::FloatMatNxM(2, 3, transpose, arr) => {
-                if arr.len() % 6 != 0 { panic!(ERR_ARRAY_SIZE); }
-                unsafe { gl::UniformMatrix2x3fv(self.handle, arr.len() as i32 / 6, transpose as u8, arr.as_ptr()); }
-            },
-            UniformData::FloatMatNxM(2, 4, transpose, arr) => {
-                if arr.len() % 8 != 0 { panic!(ERR_ARRAY_SIZE); }
-                unsafe { gl::UniformMatrix2x4fv(self.handle, arr.len() as i32 / 8, transpose as u8, arr.as_ptr()); }
-            },
+            UniformData::FloatMatNxM(2, 2, transpose, arr) => set_mat_uniform!(gl::UniformMatrix2fv, 2, 2, transpose, arr),
+            UniformData::FloatMatNxM(2, 3, transpose, arr) => set_mat_uniform!(gl::UniformMatrix2x3fv, 2, 3, transpose, arr),
+            UniformData::FloatMatNxM(2, 4, transpose, arr) => set_mat_uniform!(gl::UniformMatrix2x4fv, 2, 4, transpose, arr),
 
-            UniformData::FloatMatNxM(3, 2, transpose, arr) => {
-                if arr.len() % 6 != 0 { panic!(ERR_ARRAY_SIZE); }
-                unsafe { gl::UniformMatrix3x2fv(self.handle, arr.len() as i32 / 6, transpose as u8, arr.as_ptr()); }
-            },
-            UniformData::FloatMatNxM(3, 3, transpose, arr) => {
-                if arr.len() % 9 != 0 { panic!(ERR_ARRAY_SIZE); }
-                unsafe { gl::UniformMatrix3fv(self.handle, arr.len() as i32 / 9, transpose as u8, arr.as_ptr()); }
-            },
-            UniformData::FloatMatNxM(3, 4, transpose, arr) => {
-                if arr.len() % 12 != 0 { panic!(ERR_ARRAY_SIZE); }
-                unsafe { gl::UniformMatrix3x4fv(self.handle, arr.len() as i32 / 12, transpose as u8, arr.as_ptr()); }
-            },
+            UniformData::FloatMatNxM(3, 2, transpose, arr) => set_mat_uniform!(gl::UniformMatrix3x2fv, 3, 2, transpose, arr),
+            UniformData::FloatMatNxM(3, 3, transpose, arr) => set_mat_uniform!(gl::UniformMatrix3fv, 3, 3, transpose, arr),
+            UniformData::FloatMatNxM(3, 4, transpose, arr) => set_mat_uniform!(gl::UniformMatrix3x4fv, 3, 4, transpose, arr),
 
-            UniformData::FloatMatNxM(4, 2, transpose, arr) => {
-                if arr.len() % 8 != 0 { panic!(ERR_ARRAY_SIZE); }
-                unsafe { gl::UniformMatrix4x2fv(self.handle, arr.len() as i32 / 8, transpose as u8, arr.as_ptr()); }
-            },
-            UniformData::FloatMatNxM(4, 3, transpose, arr) => {
-                if arr.len() % 12 != 0 { panic!(ERR_ARRAY_SIZE); }
-                unsafe { gl::UniformMatrix4x3fv(self.handle, arr.len() as i32 / 12, transpose as u8, arr.as_ptr()); }
-            },
-            UniformData::FloatMatNxM(4, 4, transpose, arr) => {
-                if arr.len() % 16 != 0 { panic!(ERR_ARRAY_SIZE); }
-                unsafe { gl::UniformMatrix4fv(self.handle, arr.len() as i32 / 16, transpose as u8, arr.as_ptr()); }
-            },
+            UniformData::FloatMatNxM(4, 2, transpose, arr) => set_mat_uniform!(gl::UniformMatrix4x2fv, 4, 2, transpose, arr),
+            UniformData::FloatMatNxM(4, 3, transpose, arr) => set_mat_uniform!(gl::UniformMatrix4x3fv, 4, 3, transpose, arr),
+            UniformData::FloatMatNxM(4, 4, transpose, arr) => set_mat_uniform!(gl::UniformMatrix4fv, 4, 4, transpose, arr),
 
             _ => { panic!(ERR_DATA_FORMAT); }
         }
@@ -227,12 +187,13 @@ impl Uniform {
 
 impl Program {
     /// Wrapper for `glGetUniformLocation`
-    pub fn get_uniform_loc(&self, name: &str) -> Uniform {
+    pub fn get_uniform_loc<'a> (&'a self, name: &str) -> Uniform<'a> {
         unsafe {
             let loc = gl::GetUniformLocation(self.handle(), CString::new(name).unwrap().as_ptr());
 
             return Uniform {
                 handle: loc,
+                prog: self,
             };
         }
     }
