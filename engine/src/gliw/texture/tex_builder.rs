@@ -174,6 +174,10 @@ impl TextureBuilder2D {
             ImageType::Bmp => self.load_bmp(&tex)
         };
 
+        if let Some(err) = load_res {
+            return Err(err);
+        }
+
         unsafe {
             tex.bind();
 
@@ -201,10 +205,7 @@ impl TextureBuilder2D {
             (*closure_box)(&tex);
         }
 
-        return match load_res {
-            Some(err) => Err(err),
-            None => Ok(tex)
-        }
+        return Ok(tex);
     }
 
     /// As of now it only loads 24bpp bitmaps.
@@ -216,18 +217,16 @@ impl TextureBuilder2D {
 
         // Open the file
         match File::open(&self.path) {
-            Err(err) => {
-                if err.kind() == ErrorKind::UnexpectedEof {
-                    return Some(String::from(INCORRECT_FORMAT));
-                }
-                return Some(String::from(format!("{}", err)));
-            }
+            Err(err) => return Some(String::from(format!("{}", err))),
             Ok(f) => file = f
         }
 
         // Read the header
         match file.read_exact(&mut header) {
-            Err(err) => return Some(String::from(format!("{}", err))),
+            Err(ref err) if err.kind() == ErrorKind::UnexpectedEof =>
+                return Some(String::from(INCORRECT_FORMAT)),
+            Err(err) =>
+                return Some(String::from(format!("{}", err))),
             Ok(_) => ()
         }
 
