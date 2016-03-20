@@ -7,75 +7,74 @@ use engine::gliw::{
     Vao,
     Vbo, BufferType, BufferUsagePattern,
     Shader, ShaderType,
-    Program, ProgramBuilder
+    Program, ProgramBuilder,
+    Uniform, UniformData,
+    VertexAttrib, AttribFloatFormat,
+    Texture, TextureBuilder2D, ImageType, TextureCoordWrap, TextureFilter
 };
 use cgmath::{
-    Matrix, SquareMatrix, Matrix4,
+    Matrix4,
     Angle, Deg,
     Vector3, Point3,
 };
 use glfw::{Action, Context, Key};
 
 use std::ptr;
-use std::ffi::CString;
+use std::mem;
 
-static VERTEX_DATA: [f32; 9] = [
+static VERTEX_DATA: [f32; 18] = [
+    -1.0,  1.0, 0.0,
     -1.0, -1.0, 0.0,
      1.0, -1.0, 0.0,
-     0.0,  1.0, 0.0,
+
+    -1.0,  1.0, 0.0,
+     1.0, -1.0, 0.0,
+     1.0,  1.0, 0.0,
 ];
 
-static VS_SRC: &'static str = r#"
-    #version 330 core
+static COLOR_DATA: [f32; 12] = [
+    8.0, 8.0,
+    8.0, 0.0,
+    0.0, 0.0,
 
-    layout (location = 0) in vec3 position;
-    uniform mat4 mvp;
+    8.0, 8.0,
+    0.0, 0.0,
+    0.0, 8.0,
+];
 
-    void main() {
-       gl_Position = mvp * vec4(position, 1.0);
-    }
-"#;
-
-static FS_SRC: &'static str = r#"
-    #version 330 core
-
-    out vec3 color;
-
-    void main() {
-       color = vec3(1.0, 1.0, 1.0);
-    }
-"#;
-
+#[allow(dead_code)]
 struct SimpleEntity {
     vao: Vao,
     vbos: Vec<Vbo>,
     program: Program,
+    mvp_location: Uniform,
     mvp_matrix: Matrix4<f32>,
-    mvp_location: i32
+    attribs: Vec<VertexAttrib>,
+    tex: Texture,
 }
 
-impl /*Entity for*/ SimpleEntity {
+impl SimpleEntity {
     fn new() -> SimpleEntity {
-        let vs = Shader::new(ShaderType::Vertex, VS_SRC).unwrap();
-        let fs = Shader::new(ShaderType::Fragment, FS_SRC).unwrap();
+        let vs = Shader::from_file(ShaderType::Vertex, "resources/shaders/vs.glsl").unwrap();
+        let fs = Shader::from_file(ShaderType::Fragment, "resources/shaders/fs.glsl").unwrap();
         let program = ProgramBuilder::new()
             .attach_vs(&vs)
             .attach_fs(&fs)
             .link()
             .unwrap();
 
-        let mut obj = SimpleEntity {
-            vao: Vao::new(),
-            vbos: Vec::<Vbo>::new(),
-            program: program,
-            mvp_matrix: Matrix4::<f32>::identity(),
-            mvp_location: 0
-        };
+        let vao = Vao::new();
+        let mut vbos = Vec::<Vbo>::new();
 
-        obj.vao.bind();
-        obj.vbos.push(
+        vao.bind();
+        vbos.push(
             Vbo::from_data(
                 &VERTEX_DATA,
+                BufferType::Array,
+                BufferUsagePattern::StaticDraw));
+        vbos.push(
+            Vbo::from_data(
+                &COLOR_DATA,
                 BufferType::Array,
                 BufferUsagePattern::StaticDraw));
 
@@ -83,37 +82,63 @@ impl /*Entity for*/ SimpleEntity {
             Vector3::<f32>::new(0.0, 0.0, 0.0));
 
         let view_matrix = Matrix4::look_at(
-            Point3::<f32>::new(4.0, 3.0, 3.0),
+            Point3::<f32>::new(2.0, 1.5, 3.0),
             Point3::<f32>::new(0.0, 0.0, 0.0),
             Vector3::<f32>::new(0.0, 1.0, 0.0));
 
         let proj_matrix = cgmath::perspective(
             Deg::new(45.0), 4.0/3.0, 0.01, 100.0);
 
-        obj.mvp_matrix = proj_matrix * view_matrix * model_matrix;
+        let mvp_matrix = proj_matrix * view_matrix * model_matrix;
+        let mvp_location = program.get_uniform_loc("mvp");
 
-        unsafe {
-            obj.mvp_location = gl::GetUniformLocation(obj.program.handle(), CString::new("mvp").unwrap().as_ptr());
-        }
+        let mut attribs = Vec::<VertexAttrib>::new();
+        attribs.push(VertexAttrib::new(0));
+        attribs[0].data_float_format(&vao, &vbos[0], AttribFloatFormat::Float(3), 0, ptr::null());
+        attribs.push(VertexAttrib::new(1));
+        attribs[1].data_float_format(&vao, &vbos[1], AttribFloatFormat::Float(2), 0, ptr::null());
 
-        return obj;
+
+        let tex = TextureBuilder2D::new()
+            .source("resources/textures/banana.bmp", ImageType::Bmp)
+            .wrap(TextureCoordWrap::Repeat, TextureCoordWrap::Repeat)
+            .filter(TextureFilter::LinearMipmapLinear, TextureFilter::Linear)
+            .gen_mipmap()
+            .load()
+            .unwrap();
+
+        tex.pass_to(&program, "tex", 0);
+
+        return SimpleEntity {
+            vao: vao,
+            vbos: vbos,
+            program: program,
+            mvp_matrix: mvp_matrix,
+            mvp_location: mvp_location,
+            attribs: attribs,
+            tex: tex
+        };
     }
 
     fn draw_self(&self) {
+        self.vao.bind();
         self.program.bind();
 
         unsafe {
-            gl::UniformMatrix4fv(self.mvp_location as i32, 1, gl::FALSE, self.mvp_matrix.as_ptr());
+            self.mvp_location.value(
+                &self.program,
+                UniformData::FloatMat(4, false, &mem::transmute::<Matrix4<f32>, [f32; 16]>(self.mvp_matrix) )
+            );
+        }
 
-            let attrib_location = 0;
+        for attrib in &self.attribs {
+            (*attrib).enable(&self.vao);
+        }
 
-            gl::EnableVertexAttribArray(attrib_location);
-            self.vbos[0].bind();
-            gl::VertexAttribPointer(attrib_location, 3, gl::FLOAT, gl::FALSE, 0, ptr::null());
+        unsafe { gl::DrawArrays(gl::TRIANGLES, 0, 6); }
 
-            gl::DrawArrays(gl::TRIANGLES, 0, 3);
-
-            gl::DisableVertexAttribArray(attrib_location);
+        for attrib in &self.attribs {
+            (*attrib).disable(&self.vao);
         }
     }
 }
@@ -128,7 +153,7 @@ fn main() {
     let (mut window, events) =
         glfw.create_window(
             800, 600,
-            "It's alive!",
+            "Going bananas!",
             glfw::WindowMode::Windowed)
         .expect("Failed to create GLFW window.");
 

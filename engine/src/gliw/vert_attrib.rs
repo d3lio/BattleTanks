@@ -70,7 +70,7 @@ pub enum AttribIntFormat {
     Uint(i32),
 }
 
-/// Wrapper for an OpenGL attribute location.
+/// Wrapper for OpenGL Attribute Location.
 ///
 /// Note that this class does not give static guarantees that an actual attribute exists.
 /// This is because the return value of `glGetAttribLocation` is ambiguous - a value of `-1`

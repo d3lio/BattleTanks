@@ -11,20 +11,26 @@ pub enum ImageType {
 }
 
 #[repr(u32)]
+#[derive(Copy, Clone)]
+/// Wrapping formats for texture coordinates
 pub enum TextureCoordWrap {
-    Repeat          = gl::REPEAT,
-    MirroredRepeat  = gl::MIRRORED_REPEAT,
-    ClampToEdge     = gl::CLAMP_TO_EDGE,
-    ClampToBorder   = gl::CLAMP_TO_BORDER,
+    None               = 0,
+    Repeat             = gl::REPEAT,
+    MirroredRepeat     = gl::MIRRORED_REPEAT,
+    ClampToEdge        = gl::CLAMP_TO_EDGE,
+    ClampToBorder      = gl::CLAMP_TO_BORDER,
+    MirrorClampToEdge  = gl::MIRROR_CLAMP_TO_EDGE,
 }
 
-/// Texture coordinates filtering methods
+/// Filtering methods for texture coordinates
 ///
-/// When using mipmaps filter *Mipmap* the first asterisk
-/// stands for the mipmap resolving method. The second asterisk
-/// stands for the coordinates filtering method itself.
+/// When using mipmaps filter *Mipmap*
+/// * The first asterisk stands for the mipmap resolving method.
+/// * The second asterisk stands for the coordinates filtering method itself.
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum TextureFilter {
+    None                  = 0,
     Nearest               = gl::NEAREST,
     Linear                = gl::LINEAR,
     NearestMipmapNearest  = gl::NEAREST_MIPMAP_NEAREST,
@@ -35,27 +41,55 @@ pub enum TextureFilter {
 
 /// A builder class for loading 2D textures from files
 ///
-/// Please use the builder's methods in the order shown below because
-/// in some cases the ordering matters and this is the most optimal order
-/// insuring that the outcome is the expected one.
+/// # Important
+///
+/// Be sure to load power-of-two dimensions texture
+/// like 16x16, 128x128, 64x256, etc.
+/// The code does not restrict you to do so but will get some broken textures.
 ///
 /// # Examples
 ///
-/// Load a bitmap:
+/// Load a bitmap (.bmp):
 ///
 /// ```ignore
-/// let program = // ...obtain program somehow
-/// let uniform_location = // TODO
+/// let program = // ...obtain a program somehow
 /// let tex = TextureBuilder2D::new()
-///     .source("path/to/image", ImageType::Bmp)
+///     .source("pink_panther.bmp", ImageType::Bmp)
 ///     .wrap(TextureCoordWrap::Repeat, TextureCoordWrap::Repeat)
 ///     .filter(TextureFilter::LinearMipmapLinear, TextureFilter::Linear)
-///     .load();
-/// tex.pass_to(program, uniform_location, 0);
+///     .gen_mipmap()
+///     .load()
+///     .unwrap();
+///
+///     tex.pass_to(&program, "tex", 0);
+/// ```
+///
+/// Middleware example
+///
+/// ```ignore
+/// let program = // ...obtain a program somehow
+/// let tex = TextureBuilder2D::new()
+///     .source("pink_panther.bmp", ImageType::Bmp)
+///     .wrap(TextureCoordWrap::Repeat, TextureCoordWrap::Repeat)
+///     .filter(TextureFilter::LinearMipmapLinear, TextureFilter::Linear)
+///     .gen_mipmap()
+///     .middleware(|tex| { /* Some arbitrary code here... */ })
+///     .middleware(|tex| unsafe {
+///         println!("Texture ({})", tex.handle());
+///         let err = gl::GetError();
+///     })
+///     .load()
+///     .unwrap();
+///
+///     tex.pass_to(&program, "tex", 0);
 /// ```
 pub struct TextureBuilder2D {
-    texture: Texture,
-    /// Not using `&str` to avoid lifetimes and achieve clean code
+    s_wrap: TextureCoordWrap,
+    t_wrap: TextureCoordWrap,
+    min_filter: TextureFilter,
+    mag_filter: TextureFilter,
+    gen_mipmap: bool,
+    middleware: Vec<Box<Fn(&Texture)>>,
     path: String,
     img_type: ImageType
 }
@@ -63,7 +97,12 @@ pub struct TextureBuilder2D {
 impl TextureBuilder2D {
     pub fn new() -> TextureBuilder2D {
         return TextureBuilder2D {
-            texture: Texture::new(TextureType::Tex2D),
+            s_wrap: TextureCoordWrap::None,
+            t_wrap: TextureCoordWrap::None,
+            min_filter: TextureFilter::None,
+            mag_filter: TextureFilter::None,
+            gen_mipmap: false,
+            middleware: Vec::<Box<Fn(&Texture)>>::new(),
             path: String::from(""),
             img_type: ImageType::Bmp
         }
@@ -79,12 +118,9 @@ impl TextureBuilder2D {
     /// Specifies the wrapping method for S and T texture coordinates
     ///
     /// Usually `Repeat` is preffered
-    pub fn wrap(&mut self, s_wm: TextureCoordWrap, t_wm: TextureCoordWrap) -> &mut Self {
-        self.texture.bind();
-        unsafe {
-            gl::TexParameteri(self.texture.tex_type() as u32, gl::TEXTURE_WRAP_S, s_wm as i32);
-            gl::TexParameteri(self.texture.tex_type() as u32, gl::TEXTURE_WRAP_T, t_wm as i32);
-        }
+    pub fn wrap(&mut self, s_wrap: TextureCoordWrap, t_wrap: TextureCoordWrap) -> &mut Self {
+        self.s_wrap = s_wrap;
+        self.t_wrap = t_wrap;
         return self;
     }
 
@@ -92,49 +128,85 @@ impl TextureBuilder2D {
     ///
     /// Use `Nearest` to achieve pixelized effect
     /// Use `Linear` to achieve smoothness
+    ///
+    /// **Note:** `mag_filter` can only be `TextureFilter::Nearest` or `TextureFileter::Linear`
+    /// Otherwise it will be `TextureFilter::None`
     pub fn filter(&mut self, min_filter: TextureFilter, mag_filter: TextureFilter) -> &mut Self {
-        self.texture.bind();
-        unsafe {
-            gl::TexParameteri(self.texture.tex_type() as u32, gl::TEXTURE_MIN_FILTER, min_filter as i32);
-            gl::TexParameteri(self.texture.tex_type() as u32, gl::TEXTURE_MAG_FILTER, mag_filter as i32);
-        }
+        self.min_filter = min_filter;
+        self.mag_filter = match mag_filter {
+            TextureFilter::Linear | TextureFilter::Nearest => mag_filter,
+            _ => TextureFilter::None
+        };
         return self;
     }
 
     /// Wrapper for `glGenerateMipmap`
     pub fn gen_mipmap(&mut self) -> &mut Self {
-        self.texture.bind();
-        unsafe { gl::GenerateMipmap(self.texture.tex_type() as u32); }
+        self.gen_mipmap = true;
         return self;
     }
 
     /// Middleware for executing arbitrary code
     ///
-    /// Useful for situational code like rarely used parameters
-    pub fn middleware<F>(&mut self, closure: F) -> &mut Self where F: Fn(&Texture) {
-        self.texture.bind();
-        closure(&self.texture);
+    /// Useful for situational code like anisotropy filtering
+    pub fn middleware<F: 'static>(&mut self, closure: F) -> &mut Self where F: Fn(&Texture) {
+        self.middleware.push(Box::new(closure));
         return self;
     }
 
     /// Loads the data from the file and passes it to OpenGL
-    pub fn load(&self) -> Result<Texture, String> {
-        self.texture.bind();
+    pub fn load(&mut self) -> Result<Texture, String> {
+        let tex = Texture::new(TextureType::Tex2D);
 
+        tex.bind();
+
+        // Resolve loading method
         let load_res = match self.img_type {
-            ImageType::Bmp => self.load_bmp()
+            ImageType::Bmp => self.load_bmp(&tex)
         };
+
+        unsafe {
+            tex.bind();
+
+            match self.s_wrap {
+                TextureCoordWrap::None => (),
+                _ => gl::TexParameteri(tex.tex_type() as u32, gl::TEXTURE_WRAP_S, self.s_wrap as i32)
+            }
+
+            match self.t_wrap {
+                TextureCoordWrap::None => (),
+                _ => gl::TexParameteri(tex.tex_type() as u32, gl::TEXTURE_WRAP_T, self.t_wrap as i32)
+            }
+
+            match self.min_filter {
+                TextureFilter::None => (),
+                _ => gl::TexParameteri(tex.tex_type() as u32, gl::TEXTURE_MIN_FILTER, self.min_filter as i32)
+            }
+
+            match self.mag_filter {
+                TextureFilter::None => (),
+                _ => gl::TexParameteri(tex.tex_type() as u32, gl::TEXTURE_MAG_FILTER, self.mag_filter as i32)
+            }
+
+            if self.gen_mipmap {
+                gl::GenerateMipmap(tex.tex_type() as u32);
+            }
+        }
+
+        // Execute all of the collected closures
+        for closure_box in &self.middleware {
+            tex.bind();
+            (*closure_box)(&tex);
+        }
 
         return match load_res {
             Some(err) => Err(err),
-            None => Ok(Texture {
-                handle: self.texture.handle(),
-                tex_type: self.texture.tex_type()
-            })
+            None => Ok(tex)
         }
     }
 
-    fn load_bmp(&self) -> Option<String> {
+    /// As of now it only loads 24bpp bitmaps
+    fn load_bmp(&self, tex: &Texture) -> Option<String> {
         const BMP_HEADER_SIZE: usize = 54;
         let mut header: [u8; BMP_HEADER_SIZE] = [0; BMP_HEADER_SIZE];
 
@@ -198,7 +270,7 @@ impl TextureBuilder2D {
         // Load the texture
         unsafe {
             gl::TexImage2D(
-                self.texture.tex_type() as u32,
+                tex.tex_type() as u32,
                 0,
                 gl::RGB as i32,
                 width,

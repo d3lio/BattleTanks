@@ -1,14 +1,13 @@
 //! Texture module
 
-//mod texture;
 mod tex_builder;
 
-//pub use self::texture::{Texture, TextureType};
 pub use self::tex_builder::{TextureBuilder2D, ImageType, TextureCoordWrap, TextureFilter};
 
 extern crate gl;
 
-use gliw::error;
+use gliw::program::Program;
+use gliw::uniform::UniformData;
 
 #[repr(u32)]
 #[derive(Copy, Clone)]
@@ -56,17 +55,18 @@ impl Texture {
         unsafe { gl::BindTexture(self.tex_type as u32, self.handle); }
     }
 
-    /// Passes the texture the the given program and location on tex_unit
-    // pub fn pass_to(&self, prog: Program, location: Uniform, tex_unit: u32) {
-    //     unsafe {
-    //         if tex_unit >= gl::MAX_COMBINED_TEXTURE_IMAGE_UNITS {
-    //             panic!(error::GL_INVALID_ENUM.msg);
-    //         }
-    //         gl::ActiveTexture(gl::TEXTURE0 + tex_unit);
-    //     }
-    //     self.bind();
-    //     location...
-    // }
+    /// Passes the texture the the given `program` and `name` on `tex_unit`
+    pub fn pass_to(&self, prog: &Program, name: &str, tex_unit: u32) {
+        unsafe {
+            // Avoiding `glGetError`
+            if tex_unit >= gl::MAX_COMBINED_TEXTURE_IMAGE_UNITS {
+                panic!(ERR_TEXTURE_UNITS_LIMIT_EXCEEDED);
+            }
+            gl::ActiveTexture(gl::TEXTURE0 + tex_unit);
+        }
+        self.bind();
+        prog.get_uniform_loc(name).value(prog, UniformData::Int1(tex_unit as i32));
+    }
 
     /// Get the texture's type (target)
     pub fn tex_type(&self) -> TextureType {
@@ -85,3 +85,4 @@ impl Drop for Texture {
     }
 }
 
+const ERR_TEXTURE_UNITS_LIMIT_EXCEEDED: &'static str = "Texture units limit exceeded";

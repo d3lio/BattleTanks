@@ -60,7 +60,7 @@ pub enum UniformData<'a> {
     FloatMatNxM(i32, i32, bool, &'a [f32]),
 }
 
-/// Wrapper for an OpenGL uniform location
+/// Wrapper for OpenGL Uniform Location
 ///
 /// Note that this class does not give static guarantees that an actual attribute exists.
 /// This is because the return value of `glGetUniformLocation` is ambiguous - a value of `-1`
@@ -217,6 +217,11 @@ impl Uniform {
                 panic!(ERR_TYPE_MISSMATCH);
             }
         }
+    }
+
+    /// Get the underlying OpenGL handle
+    pub fn handle(&self) -> i32 {
+        return self.handle;
     }
 }
 
