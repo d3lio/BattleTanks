@@ -25,7 +25,7 @@ pub enum TextureType {
     MultisampleArray2D  = gl::TEXTURE_2D_MULTISAMPLE_ARRAY,
 }
 
-/// Wrapper for OpenGL Texture Object
+/// Wrapper for OpenGL Texture Object.
 ///
 /// # References
 /// * [Texture Object](https://www.opengl.org/wiki/Texture)
@@ -38,7 +38,7 @@ pub struct Texture {
 }
 
 impl Texture {
-    /// Generates a texture and set it's type (target) for safe future gl function calls
+    /// Generates a texture and set it's type (target) for safe future gl function calls.
     pub fn new(tex_type: TextureType) -> Texture {
         let mut tex = Texture {
             handle: 0,
@@ -50,13 +50,13 @@ impl Texture {
         return tex;
     }
 
-    /// Wrapper for `glBindTexture`
+    /// Wrapper for `glBindTexture`.
     pub fn bind(&self) {
         unsafe { gl::BindTexture(self.tex_type as u32, self.handle); }
     }
 
-    /// Passes the texture the the given `program` and `name` on `tex_unit`
-    pub fn pass_to(&self, prog: &Program, name: &str, tex_unit: u32) {
+    /// Passes the texture the the given `program` and `sampler_name` on `tex_unit`.
+    pub fn pass_to(&self, prog: &Program, sampler_name: &str, tex_unit: u32) {
         unsafe {
             // Avoiding `glGetError`
             if tex_unit >= gl::MAX_COMBINED_TEXTURE_IMAGE_UNITS {
@@ -65,15 +65,15 @@ impl Texture {
             gl::ActiveTexture(gl::TEXTURE0 + tex_unit);
         }
         self.bind();
-        prog.get_uniform_loc(name).value(prog, UniformData::Int1(tex_unit as i32));
+        prog.get_uniform_loc(sampler_name).value(UniformData::Int1(tex_unit as i32));
     }
 
-    /// Get the texture's type (target)
+    /// Get the texture's type (target).
     pub fn tex_type(&self) -> TextureType {
         return self.tex_type;
     }
 
-    /// Get the underlying OpenGL handle
+    /// Get the underlying OpenGL handle.
     pub fn handle(&self) -> u32 {
         return self.handle;
     }

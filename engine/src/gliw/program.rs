@@ -5,20 +5,20 @@ use gliw::{Shader, ShaderType};
 use std::ffi::CString;
 use std::ptr;
 
-/// Wrapper for a linked OpenGL Program
+/// Wrapper for a linked OpenGL Program.
 ///
-/// Created using `ProgramBuilder` or `ProgramFromFileBuilder`
+/// Created using `ProgramBuilder` or `ProgramFromFileBuilder`.
 pub struct Program {
     handle: u32,
 }
 
 impl Program {
-    /// Wrapper for `glUseProgram`
+    /// Wrapper for `glUseProgram`.
     pub fn bind(&self) {
         unsafe { gl::UseProgram(self.handle); }
     }
 
-    /// Get the underlying OpenGL handle
+    /// Get the underlying OpenGL handle.
     pub fn handle(&self) -> u32 {
         return self.handle;
     }
@@ -30,7 +30,7 @@ impl Drop for Program {
     }
 }
 
-/// A builder class for linking a program using compiled shaders
+/// A builder class for linking a program using compiled shaders.
 ///
 /// # Example
 ///
@@ -66,44 +66,44 @@ impl<'a> ProgramBuilder<'a> {
         }
     }
 
-    /// Set compute shader to attach
+    /// Set compute shader to attach.
     pub fn attach_cs (&mut self, shader: &'a Shader) -> &'a mut ProgramBuilder {
         // TODO: check if shader is compute shader?
         self.cs = Some(shader);
         return self;
     }
 
-    /// Set vertex shader to attach
+    /// Set vertex shader to attach.
     pub fn attach_vs (&mut self, shader: &'a Shader) -> &'a mut ProgramBuilder {
         self.vs = Some(shader);
         return self;
     }
 
-    /// Set tesselation control shader to attach
+    /// Set tesselation control shader to attach.
     pub fn attach_tcs (&mut self, shader: &'a Shader) -> &'a mut ProgramBuilder {
         self.tcs = Some(shader);
         return self;
     }
 
-    /// Set tesselation evaluation shader to attach
+    /// Set tesselation evaluation shader to attach.
     pub fn attach_tes (&mut self, shader: &'a Shader) -> &'a mut ProgramBuilder {
         self.tes = Some(shader);
         return self;
     }
 
-    /// Set geometry shader to attach
+    /// Set geometry shader to attach.
     pub fn attach_gs (&mut self, shader: &'a Shader) -> &'a mut ProgramBuilder {
         self.gs = Some(shader);
         return self;
     }
 
-    /// Set fragment shader to attach
+    /// Set fragment shader to attach.
     pub fn attach_fs (&mut self, shader: &'a Shader) -> &'a mut ProgramBuilder {
         self.fs = Some(shader);
         return self;
     }
 
-    /// Links a program object using the attached shaders
+    /// Links a program object using the attached shaders.
     pub fn link(&self) -> Result<Program, String> {
         unsafe {
             let prog = gl::CreateProgram();
@@ -144,7 +144,7 @@ impl<'a> ProgramBuilder<'a> {
     }
 }
 
-/// An utility builder class for compiling and linking a program using shader code from files
+/// An utility builder class for compiling and linking a program using shader code from files.
 ///
 /// # Example
 /// ```no_run
@@ -177,43 +177,43 @@ impl<'a> ProgramFromFileBuilder<'a> {
         }
     }
 
-    /// Set the file containing compute shader code
+    /// Set the file containing compute shader code.
     pub fn cs_path(&mut self, path: &'a str) -> &'a mut ProgramFromFileBuilder {
         self.cs_path = Some(path);
         return self;
     }
 
-    /// Set the file containing vertex shader code
+    /// Set the file containing vertex shader code.
     pub fn vs_path(&mut self, path: &'a str) -> &'a mut ProgramFromFileBuilder {
         self.vs_path = Some(path);
         return self;
     }
 
-    /// Set the file containing tesselation control shader code
+    /// Set the file containing tesselation control shader code.
     pub fn tcs_path(&mut self, path: &'a str) -> &'a mut ProgramFromFileBuilder {
         self.tcs_path = Some(path);
         return self;
     }
 
-    /// Set the file containing tesselation evaluation shader code
+    /// Set the file containing tesselation evaluation shader code.
     pub fn tes_path(&mut self, path: &'a str) -> &'a mut ProgramFromFileBuilder {
         self.tes_path = Some(path);
         return self;
     }
 
-    /// Set the file containing geometry shader code
+    /// Set the file containing geometry shader code.
     pub fn gs_path(&mut self, path: &'a str) -> &'a mut ProgramFromFileBuilder {
         self.gs_path = Some(path);
         return self;
     }
 
-    /// Set the file containing fragment shader code
+    /// Set the file containing fragment shader code.
     pub fn fs_path(&mut self, path: &'a str) -> &'a mut ProgramFromFileBuilder {
         self.fs_path = Some(path);
         return self;
     }
 
-    /// Compiles the provided shaders and links them into a program
+    /// Compiles the provided shaders and links them into a program.
     pub fn compile(&self) -> Result<Program, String> {
         let cs: Shader;
         let vs: Shader;

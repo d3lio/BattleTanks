@@ -1,6 +1,6 @@
 extern crate gl;
 
-/// Wrapper for OpenGL Vertex Array Object
+/// Wrapper for OpenGL Vertex Array Object.
 ///
 /// # References
 /// * [Vertex Array Object](https://www.opengl.org/wiki/Vertex_Specification#Vertex_Array_Object)
@@ -9,7 +9,7 @@ pub struct Vao {
 }
 
 impl Vao {
-    /// Generates a vertex array
+    /// Generates a vertex array.
     pub fn new() -> Vao {
         let mut vao = Vao {
             handle: 0
@@ -20,12 +20,12 @@ impl Vao {
         return vao;
     }
 
-    /// Wrapper for `glBindVertexArray`
+    /// Wrapper for `glBindVertexArray`.
     pub fn bind(&self) {
         unsafe { gl::BindVertexArray(self.handle); }
     }
 
-    /// Get the underlying OpenGL handle
+    /// Get the underlying OpenGL handle.
     pub fn handle(&self) -> u32 {
         return self.handle;
     }

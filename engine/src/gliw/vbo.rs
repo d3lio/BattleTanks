@@ -37,7 +37,7 @@ pub enum BufferUsagePattern {
     DynamicCopy     = gl::DYNAMIC_COPY,
 }
 
-/// Wrapper for OpenGL Vertex Buffer Object
+/// Wrapper for OpenGL Vertex Buffer Object.
 ///
 /// # Examples
 ///
@@ -70,7 +70,7 @@ pub struct Vbo {
 }
 
 impl Vbo {
-    /// Generate a buffer and set it's type (target) for safe future gl function calls
+    /// Generate a buffer and set it's type (target) for safe future gl function calls.
     pub fn new(buf_type: BufferType) -> Vbo {
         let mut vbo = Vbo {
             handle: 0,
@@ -82,7 +82,7 @@ impl Vbo {
         return vbo;
     }
 
-    /// Combines new and bind for convenience
+    /// Combines new and bind for convenience.
     pub fn from_data<T>(vertices: &[T], buf_type: BufferType, usage: BufferUsagePattern) -> Vbo {
         let vbo = Vbo::new(buf_type);
         vbo.buffer_data(vertices, usage);
@@ -90,14 +90,14 @@ impl Vbo {
         return vbo;
     }
 
-    /// Wrapper for `glBindBuffer`
+    /// Wrapper for `glBindBuffer`.
     pub fn bind(&self) {
         unsafe { gl::BindBuffer(self.buf_type as u32, self.handle); }
     }
 
-    /// The engine's equivalent to `glBufferData`
+    /// The engine's equivalent to `glBufferData`.
     ///
-    /// Binds self internally
+    /// Binds self internally.
     pub fn buffer_data<T>(&self, vertices: &[T], usage: BufferUsagePattern) {
         self.bind();
         unsafe {
@@ -112,12 +112,12 @@ impl Vbo {
         }
     }
 
-    /// Get the buffer's type (target)
+    /// Get the buffer's type (target).
     pub fn buf_type(&self) -> BufferType {
         return self.buf_type;
     }
 
-    /// Get the underlying OpenGL handle
+    /// Get the underlying OpenGL handle.
     pub fn handle(&self) -> u32 {
         return self.handle;
     }

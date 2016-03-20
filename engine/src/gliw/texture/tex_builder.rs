@@ -12,9 +12,8 @@ pub enum ImageType {
 
 #[repr(u32)]
 #[derive(Copy, Clone)]
-/// Wrapping formats for texture coordinates
+/// Wrapping methods for texture coordinates.
 pub enum TextureCoordWrap {
-    None               = 0,
     Repeat             = gl::REPEAT,
     MirroredRepeat     = gl::MIRRORED_REPEAT,
     ClampToEdge        = gl::CLAMP_TO_EDGE,
@@ -22,9 +21,10 @@ pub enum TextureCoordWrap {
     MirrorClampToEdge  = gl::MIRROR_CLAMP_TO_EDGE,
 }
 
-/// Filtering methods for texture coordinates
+/// Filtering methods for texture coordinates.
 ///
-/// When using mipmaps filter *Mipmap*
+/// When using mipmaps filter {\*}Mipmap{\*}:
+///
 /// * The first asterisk stands for the mipmap resolving method.
 /// * The second asterisk stands for the coordinates filtering method itself.
 #[repr(u32)]
@@ -39,20 +39,24 @@ pub enum TextureFilter {
     LinearMipmapLinear    = gl::LINEAR_MIPMAP_LINEAR,
 }
 
-/// A builder class for loading 2D textures from files
+/// A builder class for loading 2D textures from files.
 ///
 /// # Important
 ///
-/// Be sure to load power-of-two dimensions texture
-/// like 16x16, 128x128, 64x256, etc.
-/// The code does not restrict you to do so but will get some broken textures.
+/// Be sure to load power-of-two dimensions texture like 16x16, 128x128, 64x256, etc.
+/// The code does not restrict you to do so but will produce some broken textures otherwise.
 ///
 /// # Examples
 ///
 /// Load a bitmap (.bmp):
 ///
-/// ```ignore
-/// let program = // ...obtain a program somehow
+/// ```no_run
+/// # use engine::gliw::{
+/// #   Program, ProgramBuilder,
+/// #   TextureBuilder2D, ImageType, TextureCoordWrap, TextureFilter
+/// # };
+/// let program: Program; // ...obtain a program somehow
+/// # program = ProgramBuilder::new().link().unwrap();
 /// let tex = TextureBuilder2D::new()
 ///     .source("pink_panther.bmp", ImageType::Bmp)
 ///     .wrap(TextureCoordWrap::Repeat, TextureCoordWrap::Repeat)
@@ -64,10 +68,15 @@ pub enum TextureFilter {
 ///     tex.pass_to(&program, "tex", 0);
 /// ```
 ///
-/// Middleware example
+/// Middleware example:
 ///
-/// ```ignore
-/// let program = // ...obtain a program somehow
+/// ```no_run
+/// # use engine::gliw::{
+/// #   Program, ProgramBuilder,
+/// #   TextureBuilder2D, ImageType, TextureCoordWrap, TextureFilter
+/// # };
+/// let program: Program; // ...obtain a program somehow
+/// # program = ProgramBuilder::new().link().unwrap();
 /// let tex = TextureBuilder2D::new()
 ///     .source("pink_panther.bmp", ImageType::Bmp)
 ///     .wrap(TextureCoordWrap::Repeat, TextureCoordWrap::Repeat)
@@ -75,8 +84,7 @@ pub enum TextureFilter {
 ///     .gen_mipmap()
 ///     .middleware(|tex| { /* Some arbitrary code here... */ })
 ///     .middleware(|tex| unsafe {
-///         println!("Texture ({})", tex.handle());
-///         let err = gl::GetError();
+///         /* Some unsafe arbitrary code here... */
 ///     })
 ///     .load()
 ///     .unwrap();
@@ -97,8 +105,8 @@ pub struct TextureBuilder2D {
 impl TextureBuilder2D {
     pub fn new() -> TextureBuilder2D {
         return TextureBuilder2D {
-            s_wrap: TextureCoordWrap::None,
-            t_wrap: TextureCoordWrap::None,
+            s_wrap: TextureCoordWrap::Repeat,
+            t_wrap: TextureCoordWrap::Repeat,
             min_filter: TextureFilter::None,
             mag_filter: TextureFilter::None,
             gen_mipmap: false,
@@ -108,29 +116,30 @@ impl TextureBuilder2D {
         }
     }
 
-    /// Specifies the path to the image and it's type
+    /// Specifies the path to the image and it's type.
     pub fn source(&mut self, path: &str, img_type: ImageType) -> &mut Self {
         self.path = String::from(path);
         self.img_type = img_type;
         return self;
     }
 
-    /// Specifies the wrapping method for S and T texture coordinates
+    /// Specifies the wrapping method for S and T texture coordinates.
     ///
-    /// Usually `Repeat` is preffered
+    /// Initially the wrap methods are set to `Repeat`
+    /// in both OpenGL and this implementation.
     pub fn wrap(&mut self, s_wrap: TextureCoordWrap, t_wrap: TextureCoordWrap) -> &mut Self {
         self.s_wrap = s_wrap;
         self.t_wrap = t_wrap;
         return self;
     }
 
-    /// Specifies the filtering method to use when scaling the image
+    /// Specifies the filtering method to use when scaling the image.
     ///
-    /// Use `Nearest` to achieve pixelized effect
-    /// Use `Linear` to achieve smoothness
+    /// Use `Nearest` to achieve pixelized effect.<br>
+    /// Use `Linear` to achieve smoothness.
     ///
-    /// **Note:** `mag_filter` can only be `TextureFilter::Nearest` or `TextureFileter::Linear`
-    /// Otherwise it will be `TextureFilter::None`
+    /// **Note:** `mag_filter` can only be `Nearest` or `Linear`.
+    /// Otherwise it will be set to `TextureFilter::None`.
     pub fn filter(&mut self, min_filter: TextureFilter, mag_filter: TextureFilter) -> &mut Self {
         self.min_filter = min_filter;
         self.mag_filter = match mag_filter {
@@ -140,21 +149,21 @@ impl TextureBuilder2D {
         return self;
     }
 
-    /// Wrapper for `glGenerateMipmap`
+    /// Wrapper for `glGenerateMipmap`.
     pub fn gen_mipmap(&mut self) -> &mut Self {
         self.gen_mipmap = true;
         return self;
     }
 
-    /// Middleware for executing arbitrary code
+    /// Middleware for executing arbitrary code.
     ///
-    /// Useful for situational code like anisotropy filtering
+    /// Useful for situational code like anisotropy filtering.
     pub fn middleware<F: 'static>(&mut self, closure: F) -> &mut Self where F: Fn(&Texture) {
         self.middleware.push(Box::new(closure));
         return self;
     }
 
-    /// Loads the data from the file and passes it to OpenGL
+    /// Loads the data from the file and passes it to OpenGL.
     pub fn load(&mut self) -> Result<Texture, String> {
         let tex = Texture::new(TextureType::Tex2D);
 
@@ -168,15 +177,8 @@ impl TextureBuilder2D {
         unsafe {
             tex.bind();
 
-            match self.s_wrap {
-                TextureCoordWrap::None => (),
-                _ => gl::TexParameteri(tex.tex_type() as u32, gl::TEXTURE_WRAP_S, self.s_wrap as i32)
-            }
-
-            match self.t_wrap {
-                TextureCoordWrap::None => (),
-                _ => gl::TexParameteri(tex.tex_type() as u32, gl::TEXTURE_WRAP_T, self.t_wrap as i32)
-            }
+            gl::TexParameteri(tex.tex_type() as u32, gl::TEXTURE_WRAP_S, self.s_wrap as i32);
+            gl::TexParameteri(tex.tex_type() as u32, gl::TEXTURE_WRAP_T, self.t_wrap as i32);
 
             match self.min_filter {
                 TextureFilter::None => (),
@@ -205,7 +207,7 @@ impl TextureBuilder2D {
         }
     }
 
-    /// As of now it only loads 24bpp bitmaps
+    /// As of now it only loads 24bpp bitmaps.
     fn load_bmp(&self, tex: &Texture) -> Option<String> {
         const BMP_HEADER_SIZE: usize = 54;
         let mut header: [u8; BMP_HEADER_SIZE] = [0; BMP_HEADER_SIZE];

@@ -33,34 +33,34 @@ pub enum UniformData<'a> {
     Uint4(u32, u32, u32, u32),
 
     /// tuple `FloatVec(size, slice)` <br>
-    /// `size` can be 1, 2, 3 or 4 <br>
-    /// `slice` must be a `&[f32]` with lenght multiple of `size`
+    /// `size` can be 1, 2, 3 or 4. <br>
+    /// `slice` must be a `&[f32]` with lenght multiple of `size`.
     FloatVec(i32, &'a [f32]),
 
     /// tuple `IntVec(size, slice)` <br>
-    /// `size` can be 1, 2, 3 or 4 <br>
-    /// `slice` must be a `&[i32]` with lenght multiple of `size`
+    /// `size` can be 1, 2, 3 or 4. <br>
+    /// `slice` must be a `&[i32]` with lenght multiple of `size`.
     IntVec(i32, &'a [i32]),
 
     /// tuple `UintVec(size, slice)` <br>
-    /// `size` can be 1, 2, 3 or 4 <br>
-    /// `slice` must be a `&[u32]` with lenght multiple of `size`
+    /// `size` can be 1, 2, 3 or 4. <br>
+    /// `slice` must be a `&[u32]` with lenght multiple of `size`.
     UintVec(i32, &'a [u32]),
 
-    /// tuple `FloatMat(size, transpose, slice)` - an NxN matrix <br>
-    /// `size` can be 2, 3 or 4 <br>
-    /// `transpose` spceifies whether the matrix should be passed to the shader as is or transposed <br>
-    /// `slice` must be a `&[f32]` with lenght muptiple of `size * size`
+    /// tuple `FloatMat(size, transpose, slice)` - an NxN matrix. <br>
+    /// `size` can be 2, 3 or 4. <br>
+    /// `transpose` spceifies whether the matrix should be passed to the shader as is or transposed. <br>
+    /// `slice` must be a `&[f32]` with lenght muptiple of `size * size`.
     FloatMat(i32, bool, &'a [f32]),
 
-    /// tuple `FloatMatNxM(n, m, transpose, slice)` - an NxM matrix <br>
-    /// `n` and `m` can be 2, 3 or 4 <br>
-    /// `transpose` spceifies whether the matrix should be passed to the shader as is or transposed <br>
-    /// `slice` must be a `&[f32]` with lenght muptiple of `n * m` <br>
+    /// tuple `FloatMatNxM(n, m, transpose, slice)` - an NxM matrix. <br>
+    /// `n` and `m` can be 2, 3 or 4. <br>
+    /// `transpose` spceifies whether the matrix should be passed to the shader as is or transposed. <br>
+    /// `slice` must be a `&[f32]` with lenght muptiple of `n * m`. <br>
     FloatMatNxM(i32, i32, bool, &'a [f32]),
 }
 
-/// Wrapper for OpenGL Uniform Location
+/// Wrapper for OpenGL Uniform Location.
 ///
 /// Note that this class does not give static guarantees that an actual attribute exists.
 /// This is because the return value of `glGetUniformLocation` is ambiguous - a value of `-1`
@@ -72,16 +72,16 @@ pub struct Uniform<'a> {
 }
 
 impl<'a> Uniform<'a> {
-    /// Wrapper for `glUniform*` and `glUniformMatrix*`
+    /// Wrapper for `glUniform*` and `glUniformMatrix*`.
     ///
     /// Sets the value of the uniform variable.
     ///
     /// # Panics
     ///
-    /// if one of `FloatVec`, `IntVec`, `UintVec`, `FloatMat` or `FloatMatNxM` is passed for `data` and the lenght of
-    /// the slice is not a multiple of the size of the type of the uniform variable <br>
-    /// if an invalid size is passed using `FloatVec`, IntVec`, UintVec`, `FloatMat` or `FloatMatNxM` <br>
-    /// if the specified type for `data` does not match the type of the uniform variable
+    /// * Panics if one of `FloatVec`, `IntVec`, `UintVec`, `FloatMat` or `FloatMatNxM` is passed for `data` and the lenght of
+    /// the slice is not a multiple of the size of the type of the uniform variable. <br>
+    /// * Panics if an invalid size is passed using `FloatVec`, IntVec`, UintVec`, `FloatMat` or `FloatMatNxM`. <br>
+    /// * Panics if the specified type for `data` does not match the type of the uniform variable.
     ///
     pub fn value<'b> (&'b self, data: UniformData<'b>) {
         // Clear all previous error
@@ -179,14 +179,14 @@ impl<'a> Uniform<'a> {
         }
     }
 
-    /// Get the underlying OpenGL handle
+    /// Get the underlying OpenGL handle.
     pub fn handle(&self) -> i32 {
         return self.handle;
     }
 }
 
 impl Program {
-    /// Wrapper for `glGetUniformLocation`
+    /// Wrapper for `glGetUniformLocation`.
     pub fn get_uniform_loc<'a> (&'a self, name: &str) -> Uniform<'a> {
         unsafe {
             let loc = gl::GetUniformLocation(self.handle(), CString::new(name).unwrap().as_ptr());

@@ -43,26 +43,18 @@ static COLOR_DATA: [f32; 12] = [
 ];
 
 #[allow(dead_code)]
-struct SimpleEntity {
+struct SimpleEntity<'a> {
     vao: Vao,
     vbos: Vec<Vbo>,
-    program: Program,
-    mvp_location: Uniform,
+    program: &'a Program,
+    mvp_location: Uniform<'a>,
     mvp_matrix: Matrix4<f32>,
     attribs: Vec<VertexAttrib>,
     tex: Texture,
 }
 
-impl SimpleEntity {
-    fn new() -> SimpleEntity {
-        let vs = Shader::from_file(ShaderType::Vertex, "resources/shaders/vs.glsl").unwrap();
-        let fs = Shader::from_file(ShaderType::Fragment, "resources/shaders/fs.glsl").unwrap();
-        let program = ProgramBuilder::new()
-            .attach_vs(&vs)
-            .attach_fs(&fs)
-            .link()
-            .unwrap();
-
+impl<'a> SimpleEntity<'a> {
+    fn new(program: &'a Program) -> SimpleEntity {
         let vao = Vao::new();
         let mut vbos = Vec::<Vbo>::new();
 
@@ -107,7 +99,7 @@ impl SimpleEntity {
             .load()
             .unwrap();
 
-        tex.pass_to(&program, "tex", 0);
+        tex.pass_to(program, "tex", 0);
 
         return SimpleEntity {
             vao: vao,
@@ -126,8 +118,7 @@ impl SimpleEntity {
 
         unsafe {
             self.mvp_location.value(
-                &self.program,
-                UniformData::FloatMat(4, false, &mem::transmute::<Matrix4<f32>, [f32; 16]>(self.mvp_matrix) )
+                UniformData::FloatMat(4, false, &mem::transmute::<Matrix4<f32>, [f32; 16]>(self.mvp_matrix))
             );
         }
 
@@ -165,7 +156,15 @@ fn main() {
 
     unsafe { gl::ClearColor(0.0, 0.0, 0.4, 0.0); }
 
-    let entity = SimpleEntity::new();
+    let vs = Shader::from_file(ShaderType::Vertex, "resources/shaders/vs.glsl").unwrap();
+    let fs = Shader::from_file(ShaderType::Fragment, "resources/shaders/fs.glsl").unwrap();
+    let program = ProgramBuilder::new()
+        .attach_vs(&vs)
+        .attach_fs(&fs)
+        .link()
+        .unwrap();
+
+    let entity = SimpleEntity::new(&program);
 
     while !window.should_close() {
         unsafe { gl::Clear(gl::COLOR_BUFFER_BIT); }
