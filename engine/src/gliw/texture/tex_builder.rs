@@ -158,6 +158,9 @@ impl TextureBuilder2D {
     /// Middleware for executing arbitrary code.
     ///
     /// Useful for situational code like anisotropy filtering.
+    /// **Note:** middleware will always be called after the texture has been loaded to OpenGL
+    /// and after all other standard builder methods have been called.
+    /// Also it's guaranteed to have the texture bound before execution of each middleware.
     pub fn middleware<F: 'static>(&mut self, closure: F) -> &mut Self where F: Fn(&Texture) {
         self.middleware.push(Box::new(closure));
         return self;

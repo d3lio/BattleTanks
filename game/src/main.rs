@@ -12,12 +12,23 @@ use engine::gliw::{
     VertexAttrib, AttribFloatFormat,
     Texture, TextureBuilder2D, ImageType, TextureCoordWrap, TextureFilter
 };
+
+use engine::core::{
+    Renderable,
+    Scene
+};
+
 use cgmath::{
     Matrix4,
     Angle, Deg,
-    Vector3, Point3,
+    Vector3, Point3
 };
-use glfw::{Action, Context, Key};
+
+use glfw::{
+    Action,
+    Context,
+    Key
+};
 
 use std::ptr;
 use std::mem;
@@ -111,8 +122,10 @@ impl<'a> SimpleEntity<'a> {
             tex: tex
         };
     }
+}
 
-    fn draw_self(&self) {
+impl<'a> Renderable for SimpleEntity<'a> {
+    fn draw(&self) {
         self.vao.bind();
         self.program.bind();
 
@@ -165,11 +178,13 @@ fn main() {
         .unwrap();
 
     let entity = SimpleEntity::new(&program);
+    let mut scene = Scene::new();
+    scene.add(&entity);
 
     while !window.should_close() {
         unsafe { gl::Clear(gl::COLOR_BUFFER_BIT); }
 
-        entity.draw_self();
+        scene.draw();
 
         window.swap_buffers();
 
