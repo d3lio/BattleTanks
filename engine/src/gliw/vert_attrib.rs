@@ -215,7 +215,7 @@ impl VertexAttrib {
 
 impl Program {
     /// Wrapper for `glGetAttribLocation`.
-    pub fn get_attrib_loc(&self, name: &str) -> VertexAttrib {
+    pub fn vert_attrib(&self, name: &str) -> VertexAttrib {
         unsafe {
             let loc = gl::GetAttribLocation(self.handle(), CString::new(name).unwrap().as_ptr());
             return VertexAttrib {

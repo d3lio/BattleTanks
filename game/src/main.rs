@@ -93,7 +93,7 @@ impl<'a> SimpleEntity<'a> {
             Deg::new(45.0), 4.0/3.0, 0.01, 100.0);
 
         let mvp_matrix = proj_matrix * view_matrix * model_matrix;
-        let mvp_location = program.get_uniform_loc("mvp");
+        let mvp_location = program.uniform("mvp");
 
         let mut attribs = Vec::<VertexAttrib>::new();
         attribs.push(VertexAttrib::new(0));

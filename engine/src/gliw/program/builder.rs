@@ -1,34 +1,11 @@
 extern crate gl;
 
-use gliw::{Shader, ShaderType};
+use gliw::{Program, Shader, ShaderType};
 
+use std::cell::RefCell;
+use std::collections::HashMap;
 use std::ffi::CString;
 use std::ptr;
-
-/// Wrapper for a linked OpenGL Program.
-///
-/// Created using `ProgramBuilder` or `ProgramFromFileBuilder`.
-pub struct Program {
-    handle: u32,
-}
-
-impl Program {
-    /// Wrapper for `glUseProgram`.
-    pub fn bind(&self) {
-        unsafe { gl::UseProgram(self.handle); }
-    }
-
-    /// Get the underlying OpenGL handle.
-    pub fn handle(&self) -> u32 {
-        return self.handle;
-    }
-}
-
-impl Drop for Program {
-    fn drop (&mut self) {
-        unsafe { gl::DeleteProgram(self.handle); }
-    }
-}
 
 /// A builder class for linking a program using compiled shaders.
 ///
@@ -139,6 +116,7 @@ impl<'a> ProgramBuilder<'a> {
 
             return Ok(Program{
                 handle: prog,
+                uniforms: RefCell::new(HashMap::new()),
             });
         }
     }

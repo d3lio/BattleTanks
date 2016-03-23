@@ -65,7 +65,7 @@ impl Texture {
             gl::ActiveTexture(gl::TEXTURE0 + tex_unit);
         }
         self.bind();
-        prog.get_uniform_loc(sampler_name).value(UniformData::Int1(tex_unit as i32));
+        prog.uniform(sampler_name).value(UniformData::Int1(tex_unit as i32));
     }
 
     /// Get the texture's type (target).
