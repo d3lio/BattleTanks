@@ -1,4 +1,5 @@
-//! The engine's core module.<br>
+//! The engine's core module.
+//!
 //! It contains any virtual world abstractions.
 
 pub mod scene;

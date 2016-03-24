@@ -3,14 +3,16 @@ extern crate cgmath;
 extern crate glfw;
 extern crate gl;
 
+#[allow(unused_imports)]
 use engine::gliw::{
+    Gliw,
+    Program, ProgramBuilder,
+    Shader, ShaderType,
+    Texture, TextureBuilder2D, ImageType, TextureCoordWrap, TextureFilter,
+    Uniform, UniformData,
     Vao,
     Vbo, BufferType, BufferUsagePattern,
-    Shader, ShaderType,
-    Program, ProgramBuilder,
-    Uniform, UniformData,
     VertexAttrib, AttribFloatFormat,
-    Texture, TextureBuilder2D, ImageType, TextureCoordWrap, TextureFilter
 };
 
 use engine::core::{
@@ -30,6 +32,7 @@ use glfw::{
     Key
 };
 
+use std::rc::Rc;
 use std::ptr;
 use std::mem;
 
@@ -54,18 +57,17 @@ static COLOR_DATA: [f32; 12] = [
 ];
 
 #[allow(dead_code)]
-struct SimpleEntity<'a> {
+struct SimpleEntity {
     vao: Vao,
     vbos: Vec<Vbo>,
-    program: &'a Program,
-    mvp_location: Uniform<'a>,
+    program: Rc<Program>,
     mvp_matrix: Matrix4<f32>,
     attribs: Vec<VertexAttrib>,
     tex: Texture,
 }
 
-impl<'a> SimpleEntity<'a> {
-    fn new(program: &'a Program) -> SimpleEntity {
+impl SimpleEntity {
+    fn new(program: Rc<Program>) -> SimpleEntity {
         let vao = Vao::new();
         let mut vbos = Vec::<Vbo>::new();
 
@@ -93,7 +95,6 @@ impl<'a> SimpleEntity<'a> {
             Deg::new(45.0), 4.0/3.0, 0.01, 100.0);
 
         let mvp_matrix = proj_matrix * view_matrix * model_matrix;
-        let mvp_location = program.uniform("mvp");
 
         let mut attribs = Vec::<VertexAttrib>::new();
         attribs.push(VertexAttrib::new(0));
@@ -110,39 +111,43 @@ impl<'a> SimpleEntity<'a> {
             .load()
             .unwrap();
 
-        tex.pass_to(program, "tex", 0);
+        tex.pass_to(&*program, "tex", 0);
 
         return SimpleEntity {
             vao: vao,
             vbos: vbos,
             program: program,
             mvp_matrix: mvp_matrix,
-            mvp_location: mvp_location,
             attribs: attribs,
             tex: tex
         };
     }
 }
 
-impl<'a> Renderable for SimpleEntity<'a> {
+impl Renderable for SimpleEntity {
     fn draw(&self) {
         self.vao.bind();
         self.program.bind();
 
         unsafe {
-            self.mvp_location.value(
-                UniformData::FloatMat(4, false, &mem::transmute::<Matrix4<f32>, [f32; 16]>(self.mvp_matrix))
+            // TODO: Optimize.
+            // This method uses O(log) and it should be O(1).
+            // But keeping the uniform in the entity brings up
+            // problems with lifetimes.
+            self.program.uniform("mvp").value(
+                UniformData::FloatMat(4, false,
+                    &mem::transmute::<Matrix4<f32>, [f32; 16]>(self.mvp_matrix))
             );
         }
 
         for attrib in &self.attribs {
-            (*attrib).enable(&self.vao);
+            attrib.enable(&self.vao);
         }
 
         unsafe { gl::DrawArrays(gl::TRIANGLES, 0, 6); }
 
         for attrib in &self.attribs {
-            (*attrib).disable(&self.vao);
+            attrib.disable(&self.vao);
         }
     }
 }
@@ -167,7 +172,7 @@ fn main() {
 
     gl::load_with(|symbol| window.get_proc_address(symbol) as *const _);
 
-    unsafe { gl::ClearColor(0.0, 0.0, 0.4, 0.0); }
+    Gliw::clear_color(0.0, 0.0, 0.4, 0.0);
 
     let vs = Shader::from_file(ShaderType::Vertex, "resources/shaders/vs.glsl").unwrap();
     let fs = Shader::from_file(ShaderType::Fragment, "resources/shaders/fs.glsl").unwrap();
@@ -177,12 +182,12 @@ fn main() {
         .link()
         .unwrap();
 
-    let entity = SimpleEntity::new(&program);
+    let mut entity = Rc::new(SimpleEntity::new(Rc::new(program)));
     let mut scene = Scene::new();
-    scene.add(&entity);
+    scene.add(entity.clone());
 
     while !window.should_close() {
-        unsafe { gl::Clear(gl::COLOR_BUFFER_BIT); }
+        Gliw::clear(gl::COLOR_BUFFER_BIT);
 
         scene.draw();
 

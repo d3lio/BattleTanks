@@ -3,6 +3,7 @@
 //! # Remarks
 //! * Does not support immutable storage for any OpenGL objects yet.
 
+mod misc;
 mod program;
 mod shader;
 mod texture;
@@ -13,6 +14,7 @@ mod vert_attrib;
 
 mod error;
 
+pub use self::misc::Gliw;
 pub use self::program::{Program, Uniform};
 pub use self::program::builder::{ProgramBuilder, ProgramFromFileBuilder};
 pub use self::shader::{Shader, ShaderType};

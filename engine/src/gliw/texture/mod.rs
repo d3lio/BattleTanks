@@ -1,8 +1,8 @@
 //! Texture module
 
-mod tex_builder;
+mod builder;
 
-pub use self::tex_builder::{TextureBuilder2D, ImageType, TextureCoordWrap, TextureFilter};
+pub use self::builder::{TextureBuilder2D, ImageType, TextureCoordWrap, TextureFilter};
 
 extern crate gl;
 
