@@ -111,7 +111,7 @@ impl SimpleEntity {
             .load()
             .unwrap();
 
-        tex.pass_to(&*program, "tex", 0);
+        tex.pass_to(&program, "tex", 0);
 
         return SimpleEntity {
             vao: vao,
@@ -125,15 +125,15 @@ impl SimpleEntity {
 }
 
 impl Renderable for SimpleEntity {
+    fn priority(&self) -> u32 {
+        return 0;
+    }
+
     fn draw(&self) {
         self.vao.bind();
         self.program.bind();
 
         unsafe {
-            // TODO: Optimize.
-            // This method uses O(log) and it should be O(1).
-            // But keeping the uniform in the entity brings up
-            // problems with lifetimes.
             self.program.uniform("mvp").value(
                 UniformData::FloatMat(4, false,
                     &mem::transmute::<Matrix4<f32>, [f32; 16]>(self.mvp_matrix))
@@ -182,9 +182,9 @@ fn main() {
         .link()
         .unwrap();
 
-    let mut entity = Rc::new(SimpleEntity::new(Rc::new(program)));
+    let entity = Rc::new(SimpleEntity::new(Rc::new(program)));
     let mut scene = Scene::new();
-    scene.add(entity.clone());
+    scene.add(Rc::downgrade(&entity));
 
     while !window.should_close() {
         Gliw::clear(gl::COLOR_BUFFER_BIT);

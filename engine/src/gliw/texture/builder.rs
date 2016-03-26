@@ -161,7 +161,9 @@ impl TextureBuilder2D {
     /// **Note:** middleware will always be called after the texture has been loaded to OpenGL
     /// and after all other standard builder methods have been called.
     /// Also it's guaranteed to have the texture bound before execution of each middleware.
-    pub fn middleware<F: 'static>(&mut self, closure: F) -> &mut Self where F: Fn(&Texture) {
+    pub fn middleware<F>(&mut self, closure: F) -> &mut Self
+        where F: Fn(&Texture) + 'static
+    {
         self.middleware.push(Box::new(closure));
         return self;
     }
