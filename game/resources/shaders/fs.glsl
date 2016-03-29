@@ -4,8 +4,8 @@ uniform sampler2D tex;
 
 in vec2 fs_tex_coord;
 
-out vec3 color;
+out vec4 color;
 
 void main() {
-   color = texture(tex, fs_tex_coord).rgb;
+   color = texture(tex, fs_tex_coord);
 }

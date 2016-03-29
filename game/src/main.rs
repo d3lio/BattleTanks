@@ -20,10 +20,12 @@ use engine::core::{
     Scene
 };
 
+use engine::overlay::{Overlay, WindowParams};
+
 use cgmath::{
     Matrix4,
     Angle, Deg,
-    Vector3, Point3
+    Vector2, Vector3, Point3, Vector
 };
 
 use glfw::{
@@ -173,6 +175,10 @@ fn main() {
     gl::load_with(|symbol| window.get_proc_address(symbol) as *const _);
 
     Gliw::clear_color(0.0, 0.0, 0.4, 0.0);
+    unsafe {
+        gl::Enable(gl::BLEND);
+        gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
+    }
 
     let vs = Shader::from_file(ShaderType::Vertex, "resources/shaders/vs.glsl").unwrap();
     let fs = Shader::from_file(ShaderType::Fragment, "resources/shaders/fs.glsl").unwrap();
@@ -182,14 +188,43 @@ fn main() {
         .link()
         .unwrap();
 
-    let mut entity = Rc::new(SimpleEntity::new(Rc::new(program)));
+    let entity = Rc::new(SimpleEntity::new(Rc::new(program)));
     let mut scene = Scene::new();
     scene.add(entity.clone());
+
+    let ov = Overlay::new(800, 600);
+    let wnd3 = ov.make_window(WindowParams{
+        name: String::from("inner"),
+        pos: Vector2{x: cgmath::vec3(0.0, 0.0, 10.0), y: cgmath::vec3(0.0, 0.1, 0.0)},
+        size: Vector2{x: cgmath::vec3(1.0, 0.0, -20.0), y: cgmath::vec3(0.0, 0.8, 0.0)},
+        color: [cgmath::vec4(1.0, 1.0, 1.0, 1.0); 4],
+        texcoord: [Vector2::zero(); 4]
+    });
+    let wnd1 = ov.make_window(WindowParams{
+        name: String::from("wnd1"),
+        pos: Vector2{x: Vector3::zero(), y: Vector3::zero()},
+        size: Vector2{x: cgmath::vec3(0.2, 0.0, 0.0), y: cgmath::vec3(0.0, 1.0, 0.0)},
+        color: [cgmath::vec4(0.8, 0.8, 0.5, 0.6); 4],
+        texcoord: [Vector2::zero(); 4],
+    });
+    let wnd2 = ov.make_window(WindowParams{
+        name: String::from("wnd2"),
+        pos: Vector2{x: cgmath::vec3(0.2, 0.0, 10.0), y: Vector3::zero()},
+        size: Vector2{x: cgmath::vec3(0.2, 0.0, -10.0), y: cgmath::vec3(0.0, 1.0, 0.0)},
+        color: [cgmath::vec4(1.0, 0.5, 0.5, 0.8); 4],
+        texcoord: [Vector2::zero(); 4],
+    });
+
+    ov.root().add_child(&wnd1);
+    ov.root().add_child(&wnd2);
+    wnd1.add_child(&wnd3);
+    ov.update();
 
     while !window.should_close() {
         Gliw::clear(gl::COLOR_BUFFER_BIT);
 
         scene.draw();
+        ov.draw();
 
         window.swap_buffers();
 
