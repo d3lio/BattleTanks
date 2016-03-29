@@ -37,25 +37,25 @@ pub enum BufferUsagePattern {
     DynamicCopy     = gl::DYNAMIC_COPY,
 }
 
-/// Wrapper for OpenGL Vertex Buffer Object.
+/// Wrapper for OpenGL Buffer Object.
 ///
 /// # Examples
 ///
 /// Seperate creation:
 ///
 /// ```no_run
-/// # use engine::gliw::{Vbo, BufferType, BufferUsagePattern};
+/// # use engine::gliw::{Buffer, BufferType, BufferUsagePattern};
 /// # let VERTEX_DATA: [f32; 9] = [-1.0, -1.0, 0.0, 1.0, -1.0, 0.0, 0.0,  1.0, 0.0];
-/// let vbo = Vbo::new(BufferType::Array);
+/// let vbo = Buffer::new(BufferType::Array);
 /// vbo.buffer_data(&VERTEX_DATA, BufferUsagePattern::StaticDraw);
 /// ```
 ///
 /// Combined creation:
 ///
 /// ```no_run
-/// # use engine::gliw::{Vbo, BufferType, BufferUsagePattern};
+/// # use engine::gliw::{Buffer, BufferType, BufferUsagePattern};
 /// # let VERTEX_DATA: [f32; 9] = [-1.0, -1.0, 0.0, 1.0, -1.0, 0.0, 0.0,  1.0, 0.0];
-/// let vbo = Vbo::from_data(
+/// let vbo = Buffer::from_data(
 ///     &VERTEX_DATA,
 ///     BufferType::Array,
 ///     BufferUsagePattern::StaticDraw);
@@ -64,15 +64,15 @@ pub enum BufferUsagePattern {
 /// # References
 /// * [Buffer Object](https://www.opengl.org/wiki/Buffer_Object)
 /// * [Vertex Buffer Object](https://www.opengl.org/wiki/Vertex_Specification#Vertex_Buffer_Object)
-pub struct Vbo {
+pub struct Buffer {
     handle: u32,
     buf_type: BufferType
 }
 
-impl Vbo {
+impl Buffer {
     /// Generate a buffer and set it's type (target) for safe future gl function calls.
-    pub fn new(buf_type: BufferType) -> Vbo {
-        let mut vbo = Vbo {
+    pub fn new(buf_type: BufferType) -> Buffer {
+        let mut vbo = Buffer {
             handle: 0,
             buf_type: buf_type
         };
@@ -83,8 +83,8 @@ impl Vbo {
     }
 
     /// Combines new and bind for convenience.
-    pub fn from_data<T>(vertices: &[T], buf_type: BufferType, usage: BufferUsagePattern) -> Vbo {
-        let vbo = Vbo::new(buf_type);
+    pub fn from_data<T>(vertices: &[T], buf_type: BufferType, usage: BufferUsagePattern) -> Buffer {
+        let vbo = Buffer::new(buf_type);
         vbo.buffer_data(vertices, usage);
 
         return vbo;
@@ -123,7 +123,7 @@ impl Vbo {
     }
 }
 
-impl Drop for Vbo {
+impl Drop for Buffer {
     fn drop (&mut self) {
         unsafe { gl::DeleteBuffers(1, &self.handle); }
     }

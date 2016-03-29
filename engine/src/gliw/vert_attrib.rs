@@ -1,6 +1,6 @@
 extern crate gl;
 
-use gliw::{Vao, Vbo, Program};
+use gliw::{Vao, Buffer, Program};
 use gliw::error;
 
 use std::ffi::CString;
@@ -100,10 +100,10 @@ impl VertexAttrib {
     ///
     ///
     /// ```no_run
-    /// # use engine::gliw::{VertexAttrib, AttribFloatFormat, Vao, Vbo, BufferType};
+    /// # use engine::gliw::{VertexAttrib, AttribFloatFormat, Vao, Buffer, BufferType};
     /// # use std::ptr;
     /// # let vao = Vao::new();
-    /// # let vbo = Vbo::new(BufferType::Array);
+    /// # let vbo = Buffer::new(BufferType::Array);
     /// # let attrib = VertexAttrib::new(-1);
     /// // Populate a shader variable of type `vec3` from a vbo containing `[f32; 3]`
     /// attrib.data_float_format(&vao, &vbo, AttribFloatFormat::Float(3), 0, ptr::null());
@@ -117,7 +117,7 @@ impl VertexAttrib {
     /// * Panics if `stride < 0`. <br>
     /// * Panics if `size` of `format` is not between 1 and 4. <br>
     /// * Panics if the attribute hande is greater than or equal to `GL_MAX_VERTEX_ATTRIBS`. <br>
-    pub fn data_float_format(&self, vao: &Vao, vbo: &Vbo, format: AttribFloatFormat, stride: i32, offset: *const c_void) {
+    pub fn data_float_format(&self, vao: &Vao, vbo: &Buffer, format: AttribFloatFormat, stride: i32, offset: *const c_void) {
         if stride < 0 {
             panic!(NEGATIVE_STRIDE);
         }
@@ -166,7 +166,7 @@ impl VertexAttrib {
     ///
     /// # Panics
     /// Same as `data_float_format`.
-    pub fn data_int_format(&self, vao: &Vao, vbo: &Vbo, format: AttribIntFormat, stride: i32, offset: *const c_void) {
+    pub fn data_int_format(&self, vao: &Vao, vbo: &Buffer, format: AttribIntFormat, stride: i32, offset: *const c_void) {
         vao.bind();
         vbo.bind();
 

@@ -1,10 +1,6 @@
-//! Texture module
-
-mod builder;
-
-pub use self::builder::{TextureBuilder2D, ImageType, TextureCoordWrap, TextureFilter};
-
 extern crate gl;
+
+pub mod builder;
 
 use gliw::program::Program;
 use gliw::uniform::UniformData;
