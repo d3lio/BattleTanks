@@ -1,4 +1,4 @@
-//! GL Improvised Wrapper
+//! GL Improvised Wrapper.
 //!
 //! # Remarks
 //! * Does not support immutable storage for any OpenGL objects yet.

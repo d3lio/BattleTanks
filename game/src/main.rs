@@ -190,10 +190,23 @@ fn main() {
         Vector3::new(1.0, 1.0, 1.0),
         Color::from_rgba(51, 204, 51, 255))));
 
+    let cuboid5_rc = Rc::new(RefCell::new(Cuboid::new(
+        Point3::new(-1.0, 0.5, -1.0),
+        Vector3::new(1.0, 1.0, 1.0),
+        Color::from_rgba(255, 102, 0, 255))));
+    cuboid5_rc.borrow_mut().look_at(
+        Vector3::new(-2.0, 0.0, -2.0),
+        Vector3::new(0.0, 1.0, 0.0));
+
+    let cuboid6_rc = Rc::new(RefCell::new(Cuboid::new(
+        Point3::new(-2.5, 0.25, -0.5),
+        Vector3::new(0.5, 0.5, 0.5),
+        Color::from_rgba(255, 204, 0, 255))));
+
     let platform = Rc::new(RefCell::new(Cuboid::new(
         Point3::new(0.0, -0.05, 0.0),
         Vector3::new(7.0, 0.1, 4.0),
-        Color::from_rgba(255, 204, 0, 255))));
+        Color::from_rgba(153, 51, 255, 255))));
 
     let mut scene = Scene::new(camera);
     scene.add(Rc::downgrade(&platform));
@@ -202,8 +215,11 @@ fn main() {
     scene.add(Rc::downgrade(&cuboid2_rc));
     scene.add(Rc::downgrade(&cuboid3_rc));
     scene.add(Rc::downgrade(&cuboid4_rc));
+    scene.add(Rc::downgrade(&cuboid5_rc));
+    scene.add(Rc::downgrade(&cuboid6_rc));
 
     let animation_speed = 2.0;
+    let camera_speed = 0.5;
     let cuboid3_scale = cuboid3_rc.borrow().scale();
     let cuboid4_pos_x = cuboid4_rc.borrow().position().x;
 
@@ -216,11 +232,18 @@ fn main() {
         cuboid4_rc.borrow_mut().center().x = cuboid4_pos_x +
             f64::sin(glfw.get_time() * animation_speed) as f32;
 
+        cuboid6_rc.borrow_mut().look_at(
+            Vector3::new(
+                f64::cos(glfw.get_time() * animation_speed) as f32,
+                0.0,
+                f64::sin(glfw.get_time() * animation_speed) as f32),
+            Vector3::new(0.0, 1.0, 0.0));
+
         scene.camera_mut().look_at(
             Point3::<f32>::new(
-                4.0*f64::cos(glfw.get_time() * 0.5) as f32,
-                3.0*(f64::cos(glfw.get_time() * 0.5)*0.5 + 1.0) as f32,
-                6.0*f64::sin(glfw.get_time() * 0.5) as f32),
+                4.0 * f64::cos(glfw.get_time() * camera_speed) as f32,
+                3.0 * (f64::cos(glfw.get_time() * camera_speed) * 0.5 + 1.0) as f32,
+                6.0 * f64::sin(glfw.get_time() * camera_speed) as f32),
             Point3::<f32>::new(0.0, 0.0, 0.0),
             Vector3::<f32>::new(0.0, 1.0, 0.0));
 

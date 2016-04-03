@@ -12,7 +12,9 @@ use gliw::{
 
 use core::{Camera, Renderable, Entity};
 
-use self::cgmath::{Point, Point3, Vector3, Vector4, Matrix4};
+use math::RotMat;
+
+use self::cgmath::{Point, Point3, Vector3, Vector4, Matrix4, Quaternion, Rotation};
 
 use std::ptr;
 use std::mem;
@@ -67,12 +69,12 @@ static ELEMENTS: [u8; 12*3] = [
     3, 5, 7,
 ];
 
-#[allow(dead_code)]
 /// A general purpose cuboid entity.
+#[allow(dead_code)]
 pub struct Cuboid {
     center: Point3<f32>,
-    // TODO: orientation
     dimensions: Vector3<f32>,
+    orientation: Quaternion<f32>,
     scale: f32,
 
     color: Vector4<f32>,
@@ -80,14 +82,13 @@ pub struct Cuboid {
     priority: u32,
 
     vao: Vao,
-    vbo: Buffer,
-
+    vbo: Buffer,        // FIXME: should be static
     ebo: Buffer,        // FIXME: should be static
     program: Program    // FIXME: should be static
 }
 
 impl Cuboid {
-    /// Creates a new cuboid form given center, dimensions and color.
+    /// Creates a new cuboid from given center, dimensions and color.
     pub fn new(center: Point3<f32>, dimensions: Vector3<f32>, color: Vector4<f32>) -> Cuboid {
         let program = ProgramBuilder::new()
             .attach_vs(&Shader::new(ShaderType::Vertex, VS_SRC).unwrap())
@@ -116,20 +117,18 @@ impl Cuboid {
         return Cuboid {
             center: center,
             dimensions: dimensions,
+            orientation: Quaternion::zero(),
             scale: 1.0,
-
             color: color,
-
             priority: 0,
-
             vao: vao,
             vbo: vbo,
-
             ebo: ebo,
             program: program
         }
     }
 
+    /// Set rendering priority.
     pub fn set_priority(&mut self, priority: u32) {
         self.priority = priority;
     }
@@ -145,12 +144,20 @@ impl Entity for Cuboid {
         return self.center;
     }
 
+    fn orientation(&self) -> Quaternion<f32> {
+        return self.orientation;
+    }
+
     fn scale(&self) -> f32 {
         return self.scale;
     }
 
     fn move_to(&mut self, position: Point3<f32>) {
         self.center = position;
+    }
+
+    fn look_at(&mut self, dir: Vector3<f32>, up: Vector3<f32>) {
+        self.orientation = Rotation::look_at(dir, up);
     }
 
     fn scale_by(&mut self, units: f32) {
@@ -166,9 +173,10 @@ impl Entity for Cuboid {
             self.dimensions.x * self.scale,
             self.dimensions.y * self.scale,
             self.dimensions.z * self.scale);
+        let rotation_matrix = Matrix4::from_quat(&self.orientation);
         let translate_matrix = Matrix4::from_translation(self.center.to_vec());
 
-        return translate_matrix * scale_matrix;
+        return translate_matrix * rotation_matrix * scale_matrix;
     }
 }
 

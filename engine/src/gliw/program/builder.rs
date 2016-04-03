@@ -9,7 +9,7 @@ use std::ptr;
 
 /// A builder class for linking a program using compiled shaders.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```no_run
 /// # use engine::gliw::{Shader, ShaderType, ProgramBuilder};
@@ -124,7 +124,7 @@ impl<'a> ProgramBuilder<'a> {
 
 /// An utility builder class for compiling and linking a program using shader code from files.
 ///
-/// # Example
+/// # Examples
 /// ```no_run
 /// use engine::gliw::ProgramFromFileBuilder;
 ///

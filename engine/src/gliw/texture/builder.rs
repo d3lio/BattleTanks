@@ -10,9 +10,9 @@ pub enum ImageType {
     Bmp,
 }
 
+/// Wrapping methods for texture coordinates.
 #[repr(u32)]
 #[derive(Copy, Clone)]
-/// Wrapping methods for texture coordinates.
 pub enum TextureCoordWrap {
     Repeat             = gl::REPEAT,
     MirroredRepeat     = gl::MIRRORED_REPEAT,

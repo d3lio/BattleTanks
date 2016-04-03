@@ -2,16 +2,15 @@ extern crate cgmath;
 
 pub mod cuboid;
 
-use self::cgmath::{
-    Point3, Matrix4
-};
+use self::cgmath::{Point3, Vector3, Matrix4, Quaternion};
 
-/// Entity trait representing basic transformation operations.
+/// Entity trait representing basic transformations.
 pub trait Entity {
     /// Get the position.
     fn position(&self) -> Point3<f32>;
 
-    // TODO: Get the orientation
+    /// Get the orientation.
+    fn orientation(&self) -> Quaternion<f32>;
 
     /// Get the scale.
     fn scale(&self) -> f32;
@@ -24,7 +23,8 @@ pub trait Entity {
     /// Teleport the entity to the given position.
     fn move_to(&mut self, position: Point3<f32>);
 
-    // TODO: Rotate the entity
+    /// Rotate the entity.
+    fn look_at(&mut self, dir: Vector3<f32>, up: Vector3<f32>);
 
     /// Relative multiplicative scale.
     fn scale_by(&mut self, units: f32);

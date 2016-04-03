@@ -13,7 +13,7 @@ use self::cgmath::{
 pub struct Camera {
     view_matrix: Matrix4<f32>,
     proj_matrix: Matrix4<f32>,
-    // Reduces draw calls computations
+    // Reduces draw call computations
     vp_matrix: Matrix4<f32>
 }
 
