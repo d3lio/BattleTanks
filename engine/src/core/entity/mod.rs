@@ -2,7 +2,7 @@ extern crate cgmath;
 
 pub mod cuboid;
 
-use self::cgmath::{Point3, Vector3, Matrix4, Quaternion};
+use self::cgmath::{Point3, Vector3, Quaternion};
 
 /// Entity trait representing basic transformations.
 pub trait Entity {
@@ -31,7 +31,4 @@ pub trait Entity {
 
     /// Non relative scale.
     fn scale_to(&mut self, units: f32);
-
-    /// Get the entity's model matrix.
-    fn model_matrix(&self) -> Matrix4<f32>;
 }

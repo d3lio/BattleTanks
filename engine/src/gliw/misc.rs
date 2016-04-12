@@ -28,6 +28,10 @@ impl Gliw {
         unsafe { gl::Enable(capability); }
     }
 
+    pub fn disable(capability: u32) {
+        unsafe { gl::Disable(capability); }
+    }
+
     pub fn clear(mask: u32) {
         unsafe { gl::Clear(mask); }
     }

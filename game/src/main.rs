@@ -15,7 +15,7 @@ use engine::gliw::{
     VertexAttrib, AttribFloatFormat,
 };
 
-use engine::core::{Entity, Camera, Renderable, Scene, Cuboid, Color};
+use engine::core::{Entity, Camera, Renderable, Scene, Composition, Cuboid, Color};
 
 use cgmath::{Point3, Vector3, Matrix4};
 
@@ -104,11 +104,15 @@ impl SimpleEntity {
 }
 
 impl Renderable for SimpleEntity {
-    fn draw(&self, camera: &Camera) {
+    fn model_matrix(&self) -> Matrix4<f32> {
+        return self.model_matrix;
+    }
+
+    fn draw(&self, draw_space: Matrix4<f32>, camera: &Camera) {
         self.vao.bind();
         self.program.bind();
 
-        let mvp_matrix = camera.vp_matrix() * self.model_matrix;
+        let mvp_matrix = camera.vp_matrix() * draw_space * self.model_matrix;
 
         unsafe {
             self.program.uniform("mvp").value(UniformData::FloatMat(4, false,
@@ -185,10 +189,23 @@ fn main() {
         Vector3::new(1.0, 1.0, 1.0),
         Color::from_rgba(255, 0, 102, 255))));
 
-    let cuboid4_rc = Rc::new(RefCell::new(Cuboid::new(
+    let cuboid4_rc = Rc::new(RefCell::new(Composition::new(Cuboid::new(
         Point3::new(-2.0, 0.5, 1.0),
         Vector3::new(1.0, 1.0, 1.0),
-        Color::from_rgba(51, 204, 51, 255))));
+        Color::from_rgba(51, 204, 51, 255)))));
+
+    let cuboid4_child_comp_rc = Rc::new(RefCell::new(Composition::new(Cuboid::new(
+        Point3::new(0.0, 0.75, 0.0),
+        Vector3::new(0.5, 0.5, 0.5),
+        Color::from_rgba(153, 204, 0, 255)))));
+
+    let cuboid4_child_comp_child_rc = Rc::new(RefCell::new(Cuboid::new(
+        Point3::new(-1.0, 0.75, 0.0),
+        Vector3::new(0.5, 0.5, 0.5),
+        Color::from_rgba(153, 204, 0, 255))));
+
+    cuboid4_rc.borrow_mut().add(Rc::downgrade(&cuboid4_child_comp_rc));
+    cuboid4_child_comp_rc.borrow_mut().add(Rc::downgrade(&cuboid4_child_comp_child_rc));
 
     let cuboid5_rc = Rc::new(RefCell::new(Cuboid::new(
         Point3::new(-1.0, 0.5, -1.0),
@@ -203,6 +220,7 @@ fn main() {
         Vector3::new(0.5, 0.5, 0.5),
         Color::from_rgba(255, 204, 0, 255))));
 
+
     let platform = Rc::new(RefCell::new(Cuboid::new(
         Point3::new(0.0, -0.05, 0.0),
         Vector3::new(7.0, 0.1, 4.0),
@@ -216,6 +234,7 @@ fn main() {
     scene.add(Rc::downgrade(&cuboid3_rc));
     scene.add(Rc::downgrade(&cuboid4_rc));
     scene.add(Rc::downgrade(&cuboid5_rc));
+    scene.add(Rc::downgrade(&cuboid6_rc));
     scene.add(Rc::downgrade(&cuboid6_rc));
 
     let animation_speed = 2.0;
@@ -237,6 +256,13 @@ fn main() {
                 f64::cos(glfw.get_time() * animation_speed) as f32,
                 0.0,
                 f64::sin(glfw.get_time() * animation_speed) as f32),
+            Vector3::new(0.0, 1.0, 0.0));
+
+        cuboid4_child_comp_rc.borrow_mut().look_at(
+            Vector3::new(
+                f64::sin(glfw.get_time() * animation_speed) as f32,
+                0.0,
+                f64::cos(glfw.get_time() * animation_speed) as f32),
             Vector3::new(0.0, 1.0, 0.0));
 
         scene.camera_mut().look_at(

@@ -167,6 +167,12 @@ impl Entity for Cuboid {
     fn scale_to(&mut self, units: f32) {
         self.scale = units;
     }
+}
+
+impl Renderable for Cuboid {
+    fn priority(&self) -> u32 {
+        return self.priority;
+    }
 
     fn model_matrix(&self) -> Matrix4<f32> {
         let scale_matrix = Matrix4::from_nonuniform_scale(
@@ -178,18 +184,12 @@ impl Entity for Cuboid {
 
         return translate_matrix * rotation_matrix * scale_matrix;
     }
-}
 
-impl Renderable for Cuboid {
-    fn priority(&self) -> u32 {
-        return self.priority;
-    }
-
-    fn draw(&self, camera: &Camera) {
+    fn draw(&self, draw_space: Matrix4<f32>, camera: &Camera) {
         self.vao.bind();
         self.program.bind();
 
-        let mvp_matrix = camera.vp_matrix() * self.model_matrix();
+        let mvp_matrix = camera.vp_matrix() * draw_space * self.model_matrix();
 
         unsafe {
             self.program.uniform("cuboid_color").value(UniformData::FloatVec(4,

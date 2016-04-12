@@ -7,7 +7,7 @@ use self::cgmath::{
 };
 
 #[derive(Copy, Clone)]
-/// Camera structure used for holding the view and projection matrices.
+/// A structure used for holding the view and projection matrices.
 ///
 /// See `Scene`
 pub struct Camera {

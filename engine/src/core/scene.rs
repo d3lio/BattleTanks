@@ -1,9 +1,13 @@
+extern crate cgmath;
+
+use self::cgmath::{Matrix4, SquareMatrix};
+
 use core::{Camera, Renderable};
 
 use std::rc::Weak;
 use std::cell::RefCell;
 
-/// A scene structure holding `Renderable` objects.
+/// A structure used for rendering `Renderable` objects.
 ///
 /// The scene uses a render priority system where the lower priority targets will be rendered earlier
 /// meaning that they will get overlapped by higher priority objects.
@@ -36,24 +40,24 @@ impl Scene {
     {
         // The &mut self can be just &self but this way it shows the logical mutation.
 
-        let ent_priority = match renderable.upgrade() {
-            Some(ent) => ent.borrow().priority(),
+        let ins_priority = match renderable.upgrade() {
+            Some(renderable_ref) => renderable_ref.borrow().priority(),
             None => return self
         };
 
-        let mut ent_pos: usize = 0;
+        let mut ins_pos: usize = 0;
         let mut found: bool = false;
 
-        self.render_queue.borrow_mut().retain(|ent_ref| {
-            match ent_ref.upgrade() {
-                Some(ent) => {
+        self.render_queue.borrow_mut().retain(|renderable_ref| {
+            match renderable_ref.upgrade() {
+                Some(renderable) => {
                     if !found {
                         // < is preffered than <= for better performance.
                         // This affects priority, see `Scene::add`.
-                        if ent_priority < ent.borrow().priority() {
+                        if ins_priority < renderable.borrow().priority() {
                             found = true;
                         } else {
-                            ent_pos += 1;
+                            ins_pos += 1;
                         }
                     }
                     return true;
@@ -62,7 +66,7 @@ impl Scene {
             }
         });
 
-        self.render_queue.borrow_mut().insert(ent_pos, renderable);
+        self.render_queue.borrow_mut().insert(ins_pos, renderable);
 
         return self;
     }
@@ -72,7 +76,7 @@ impl Scene {
         self.render_queue.borrow_mut().retain(|ent_ref| {
             match ent_ref.upgrade() {
                 Some(ent) => {
-                    ent.borrow().draw(&self.camera);
+                    ent.borrow().draw(Matrix4::identity(), &self.camera);
                     return true;
                 },
                 None => return false
