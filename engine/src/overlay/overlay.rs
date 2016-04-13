@@ -36,8 +36,8 @@ pub struct OverlayBase {
 
     arena: Vec<RefCell<WindowBase>>,
 
-    pub invalid_data: RefCell<Vec<usize>>,
-    pub invalid_topol: Cell<bool>,
+    pub should_update: RefCell<Vec<usize>>,
+    pub should_reindex: Cell<bool>,
 }
 
 impl OverlayBase {
@@ -74,8 +74,7 @@ impl OverlayBase {
 
         unsafe { prog.uniform("proj").value(UniformData::FloatMat(4, false, &mem::transmute::<_, [f32; 16]>(proj_mat))); }
 
-        let mut root = WindowBase::new(BuildParams{
-            name: String::new(),
+        let mut root = WindowBase::new("", BuildParams {
             pos: cgmath::vec2(Vec3::zero(), Vec3::zero()),
             size: cgmath::vec2(cgmath::vec3(0.0, 0.0, width as f32), cgmath::vec3(0.0, 0.0, height as f32)),
             color: [Vec4::zero(); 4],
@@ -86,7 +85,7 @@ impl OverlayBase {
         root.vbo_beg = 0;
         root.vbo_end = 4;
 
-        return OverlayBase {
+        let mut ov = OverlayBase {
             vao: vao,
             vbo: vbo,
             prog: prog,
@@ -94,30 +93,35 @@ impl OverlayBase {
 
             arena: vec![RefCell::new(root)],
 
-            invalid_data: RefCell::new(vec![0]),
-            invalid_topol: Cell::new(false),
-        }
+            should_update: RefCell::new(vec![0]),
+            should_reindex: Cell::new(true),
+        };
+
+        // update vbo and indices
+        ov.update();
+
+        return ov;
     }
 
     pub fn update(&mut self) {
-        if self.invalid_topol.get() {
+        if self.should_reindex.get() {
             let mut root = self.arena[0].borrow_mut();
             self.update_index(&mut root);
         }
 
-        let invalid_data = self.invalid_data.borrow();
+        let should_update = self.should_update.borrow();
 
-        if !invalid_data.is_empty() {
+        if !should_update.is_empty() {
             let vbo_len = self.arena[0].borrow().vbo_end as usize;
 
-            if self.invalid_topol.get() {
+            if self.should_reindex.get() {
                 let mut vec: Vec<VertexData>;
                 let vbo_data: &mut [VertexData];
 
                 vec = vec![VertexData{pos: Vec2::zero(), uv: Vec2::zero(), color: Vec4::zero()}; vbo_len];
                 vbo_data = vec.as_mut_slice();
 
-                for &index in invalid_data.iter() {
+                for &index in should_update.iter() {
                     self.update_subtree(&self.arena[index], vbo_data);
                 }
 
@@ -143,18 +147,18 @@ impl OverlayBase {
                     vbo_data = slice::from_raw_parts_mut(ptr as *mut VertexData, vbo_len);
                 }
 
-                for &index in invalid_data.iter() {
+                for &index in should_update.iter() {
                     self.update_subtree(&self.arena[index], vbo_data);
                 }
 
                 unsafe { gl::UnmapBuffer(self.vbo.buf_type() as u32); }
             }
 
-            mem::drop(invalid_data);
-            let mut invalid_data = self.invalid_data.borrow_mut();
+            mem::drop(should_update);
+            let mut should_update = self.should_update.borrow_mut();
 
-            invalid_data.clear();
-            self.invalid_topol.set(false);
+            should_update.clear();
+            self.should_reindex.set(false);
         }
     }
 
@@ -171,9 +175,9 @@ impl OverlayBase {
         return &self.arena[index];
     }
 
-    pub fn make_window(&mut self, data: BuildParams) -> usize {
+    pub fn make_window(&mut self, name: &str, data: BuildParams) -> usize {
         let next_index = self.arena.len();
-        let mut window = WindowBase::new(data);
+        let mut window = WindowBase::new(name, data);
         window.index = next_index;
 
         self.arena.push(RefCell::new(window));

@@ -12,8 +12,9 @@ pub type Vec4 = Vector4<f32>;
 
 #[derive(Debug)]
 pub struct WindowBase {
-    pub creation_data: BuildParams,
+    pub name: String,
     pub index: usize,
+    pub creation_data: BuildParams,
 
     pub pos: Vec2,
     pub size: Vec2,
@@ -28,7 +29,6 @@ pub struct WindowBase {
 
 #[derive(Clone)]
 pub struct BuildParams {
-    pub name: String,
     pub pos: Vector2<Vec3>,
     pub size: Vector2<Vec3>,
     pub color: [Vec4; 4],
@@ -37,15 +37,16 @@ pub struct BuildParams {
 
 impl Debug for BuildParams {
     fn fmt(&self, f: &mut Formatter) -> Result<(), fmt::Error> {
-        write!(f, "BuildParams {{ name: {:?}, ... }}", self.name)
+        write!(f, "BuildParams {{ ... }}")
     }
 }
 
 impl WindowBase {
-    pub fn new(data: BuildParams) -> WindowBase {
+    pub fn new(name: &str, data: BuildParams) -> WindowBase {
         return WindowBase {
-            creation_data: data,
+            name: String::from(name),
             index: usize::MAX,
+            creation_data: data,
             pos: Vec2::zero(),
             size: Vec2::zero(),
             shown: true,
@@ -63,7 +64,7 @@ impl WindowBase {
 
                 for &index in &self.children {
                     let child = ovl.window_from_index(index).borrow();
-                    if child.creation_data.name == curr_name {
+                    if child.name == curr_name {
                         return child.child(ovl, next_name);
                     }
                 }
@@ -73,7 +74,7 @@ impl WindowBase {
             None => {
                 for &index in &self.children {
                     let child = ovl.window_from_index(index).borrow();
-                    if child.creation_data.name == name {
+                    if child.name == name {
                         return Some(index);
                     }
                 }
@@ -89,16 +90,16 @@ impl WindowBase {
         // assert!(child.parent == None);
         if let Some(parent_index) = child.parent {
             panic!(format!("Cannot attach window \"{}\" to \"{}\" because it is already attached to window \"{}\"",
-                child.creation_data.name,
+                child.name,
                 self.full_name(ovl),
                 ovl.window_from_index(parent_index).borrow().full_name(ovl)));
         }
 
-        // assert!(self.child(ovl, &child.creation_data.name) == None);
+        // assert!(self.child(ovl, &child.name) == None);
         // TODO: `it` in the error message is ambigious
-        if self.child(ovl, &child.creation_data.name) != None {
+        if self.child(ovl, &child.name) != None {
             panic!(format!("Cannot attach window \"{}\" to \"{}\" because the second already has a child with the same name",
-                child.creation_data.name,
+                child.name,
                 self.full_name(ovl)));
         }
 
@@ -110,10 +111,10 @@ impl WindowBase {
         match self.parent {
             Some(index) => {
                 let parent = ovl.window_from_index(index).borrow();
-                return parent.full_name(ovl) + "." + &self.creation_data.name;
+                return parent.full_name(ovl) + "." + &self.name;
             },
             None => {
-                return self.creation_data.name.clone();
+                return self.name.clone();
             }
         };
     }

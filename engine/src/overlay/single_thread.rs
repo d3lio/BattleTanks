@@ -1,16 +1,14 @@
 use overlay::overlay::OverlayBase;
+use overlay::window::WindowBase;
 use overlay::WindowParams;
 
 use std::cell::RefCell;
 use std::rc::{Rc, Weak};
+use std::cell::RefMut;
+use std::ops::{Deref, DerefMut};
 
 pub struct Overlay {
     internal: Rc<RefCell<OverlayBase>>
-}
-
-pub struct Window {
-    ovl: Weak<RefCell<OverlayBase>>,
-    index: usize,
 }
 
 impl Overlay {
@@ -28,8 +26,8 @@ impl Overlay {
         self.internal.borrow().draw();
     }
 
-    pub fn make_window(&self, data: WindowParams) -> Window {
-        let index = self.internal.borrow_mut().make_window(data);
+    pub fn make_window(&self, name: &str, data: WindowParams) -> Window {
+        let index = self.internal.borrow_mut().make_window(name, data);
         return Window {
             ovl: Rc::downgrade(&self.internal),
             index: index,
@@ -46,6 +44,11 @@ impl Overlay {
     pub fn window(&self, name: &str) -> Option<Window> {
         self.root().child(name)
     }
+}
+
+pub struct Window {
+    ovl: Weak<RefCell<OverlayBase>>,
+    index: usize,
 }
 
 impl Window {
@@ -77,13 +80,41 @@ impl Window {
 
         window.add_child(&ovl, child.index);
 
-        ovl.invalid_data.borrow_mut().push(child.index);
-        ovl.invalid_topol.set(true);
+        ovl.should_update.borrow_mut().push(child.index);
+        ovl.should_reindex.set(true);
     }
 
     // pub fn rem_child(&self, name: &str) -> Option<Window> {
     //     None
     // }
+
+    // pub fn params<'a> (&'a self) -> WindowParamsRef<'a> {
+    //     let window_ovl = self.ovl.upgrade().unwrap();
+    //     let ovl = window_ovl.borrow();
+    //     let mut window = ovl.window_from_index(self.index).borrow_mut();
+
+    //     return WindowParamsRef {
+    //         internal: window,
+    //     };
+    // }
 }
+
+// pub struct WindowParamsRef<'a> {
+//     internal: RefMut<'a, WindowBase>,
+// }
+
+// impl<'a> Deref for WindowParamsRef<'a> {
+//     type Target = WindowParams;
+
+//     fn deref (&self) -> &Self::Target {
+//         &self.internal.creation_data
+//     }
+// }
+
+// impl<'a> DerefMut for WindowParamsRef<'a> {
+//     fn deref_mut (&mut self) -> &mut Self::Target {
+//         &mut self.internal.creation_data
+//     }
+// }
 
 const ERR_WINDOW_DIFF_OVERLAYS: &'static str = "Windows belong to different Overlay objects";
