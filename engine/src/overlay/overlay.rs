@@ -7,13 +7,14 @@ use gliw::{
     Vao, Vbo, BufferType, BufferUsagePattern,
     AttribFloatFormat, UniformData,
 };
-use overlay::window::{WindowBase, BuildParams};
+use overlay::window::{WindowBase, WindowParams};
 
 use self::cgmath::{Vector2, Vector3, Vector4, Vector, ApproxEq, Matrix4};
 use std::cell::{RefCell, Cell};
 use std::mem;
 use std::ptr;
 use std::slice;
+use std::default::Default;
 
 pub type Vec2 = Vector2<f32>;
 pub type Vec3 = Vector3<f32>;
@@ -27,7 +28,13 @@ struct VertexData {
     color: Vec4,
 }
 
-/// TODO: texture
+impl Default for VertexData {
+    fn default() -> Self {
+        unsafe { mem::zeroed::<Self>() }
+    }
+}
+
+// TODO: texture
 pub struct OverlayBase {
     vao: Vao,
     vbo: Vbo,
@@ -74,7 +81,7 @@ impl OverlayBase {
 
         unsafe { prog.uniform("proj").value(UniformData::FloatMat(4, false, &mem::transmute::<_, [f32; 16]>(proj_mat))); }
 
-        let mut root = WindowBase::new("", BuildParams {
+        let mut root = WindowBase::new("", WindowParams {
             pos: cgmath::vec2(Vec3::zero(), Vec3::zero()),
             size: cgmath::vec2(cgmath::vec3(0.0, 0.0, width as f32), cgmath::vec3(0.0, 0.0, height as f32)),
             color: [Vec4::zero(); 4],
@@ -83,7 +90,6 @@ impl OverlayBase {
 
         root.index = 0;
         root.vbo_beg = 0;
-        root.vbo_end = 4;
 
         let mut ov = OverlayBase {
             vao: vao,
@@ -103,63 +109,61 @@ impl OverlayBase {
         return ov;
     }
 
+    // TODO: Do i need the mut self? Do I need all the `RefCell`s and `Cell`s?
     pub fn update(&mut self) {
+        if !self.should_reindex.get() && self.should_update.borrow().is_empty() {
+            return;
+        }
+
         if self.should_reindex.get() {
-            let mut root = self.arena[0].borrow_mut();
-            self.update_index(&mut root);
-        }
-
-        let should_update = self.should_update.borrow();
-
-        if !should_update.is_empty() {
-            let vbo_len = self.arena[0].borrow().vbo_end as usize;
-
-            if self.should_reindex.get() {
-                let mut vec: Vec<VertexData>;
-                let vbo_data: &mut [VertexData];
-
-                vec = vec![VertexData{pos: Vec2::zero(), uv: Vec2::zero(), color: Vec4::zero()}; vbo_len];
-                vbo_data = vec.as_mut_slice();
-
-                for &index in should_update.iter() {
-                    self.update_subtree(&self.arena[index], vbo_data);
-                }
-
-                self.vbo.buffer_data(vbo_data, BufferUsagePattern::DynamicDraw);
-
-                self.indices.truncate(vbo_len*6);
-                for i in self.indices.len()/6 .. vbo_len {
-                    self.indices.push(4*i as u32);
-                    self.indices.push(4*i as u32 + 1);
-                    self.indices.push(4*i as u32 + 2);
-
-                    self.indices.push(4*i as u32);
-                    self.indices.push(4*i as u32 + 2);
-                    self.indices.push(4*i as u32 + 3);
-                }
-            }
-            else {
-                let vbo_data: &mut [VertexData];
-
-                unsafe {
-                    self.vbo.bind();
-                    let ptr = gl::MapBuffer(self.vbo.buf_type() as u32, gl::WRITE_ONLY);
-                    vbo_data = slice::from_raw_parts_mut(ptr as *mut VertexData, vbo_len);
-                }
-
-                for &index in should_update.iter() {
-                    self.update_subtree(&self.arena[index], vbo_data);
-                }
-
-                unsafe { gl::UnmapBuffer(self.vbo.buf_type() as u32); }
+            {
+                let mut root = self.arena[0].borrow_mut();
+                self.build_tree(&mut root);
             }
 
-            mem::drop(should_update);
-            let mut should_update = self.should_update.borrow_mut();
+            let vbo_len = 4 * self.arena[0].borrow().vbo_end as usize;
 
-            should_update.clear();
-            self.should_reindex.set(false);
+            let mut vbo_vec = vec![VertexData::default(); vbo_len];
+            let vbo_data = &mut vbo_vec;
+
+            self.update_window(&self.arena[0], vbo_data, true);
+
+            self.vbo.buffer_data(vbo_data, BufferUsagePattern::DynamicDraw);
+
+            let indices_len = 6 * self.arena[0].borrow().vbo_end as usize;
+
+            self.indices.truncate(indices_len);
+            while self.indices.len() < indices_len {
+                let i = self.indices.len()/6;
+
+                self.indices.push(4*i as u32);
+                self.indices.push(4*i as u32 + 1);
+                self.indices.push(4*i as u32 + 2);
+
+                self.indices.push(4*i as u32);
+                self.indices.push(4*i as u32 + 2);
+                self.indices.push(4*i as u32 + 3);
+            }
         }
+        else {
+            let vbo_len = 4 * self.arena[0].borrow().vbo_end as usize;
+            let vbo_data: &mut [VertexData];
+
+            unsafe {
+                self.vbo.bind();
+                let ptr = gl::MapBuffer(self.vbo.buf_type() as u32, gl::WRITE_ONLY);
+                vbo_data = slice::from_raw_parts_mut(ptr as *mut VertexData, vbo_len);
+            }
+
+            for &index in self.should_update.borrow().iter() {
+                self.update_window(&self.arena[index], vbo_data, false);
+            }
+
+            unsafe { gl::UnmapBuffer(self.vbo.buf_type() as u32); }
+        }
+
+        self.should_update.borrow_mut().clear();
+        self.should_reindex.set(false);
     }
 
     pub fn draw(&self) {
@@ -175,7 +179,7 @@ impl OverlayBase {
         return &self.arena[index];
     }
 
-    pub fn make_window(&mut self, name: &str, data: BuildParams) -> usize {
+    pub fn make_window(&mut self, name: &str, data: WindowParams) -> usize {
         let next_index = self.arena.len();
         let mut window = WindowBase::new(name, data);
         window.index = next_index;
@@ -184,20 +188,26 @@ impl OverlayBase {
         return next_index;
     }
 
-    fn update_index(&self, window: &mut WindowBase) {
-        let mut prev_end = window.vbo_beg + 4;
+
+    /// Does a recursive pre-order traverse of the window tree and updates the `vbo_beg` and `vbo_end` fields.
+    ///
+    /// Assumes that `window.vbo_beg` is correct - the rest are updated relatively to it.
+    fn build_tree(&self, window: &mut WindowBase) {
+        let mut prev_end = window.vbo_beg + 1;
 
         for &index in &window.children {
             let mut child = self.arena[index].borrow_mut();
+
             child.vbo_beg = prev_end;
-            self.update_index(&mut child);
+            self.build_tree(&mut child);
             prev_end = child.vbo_end;
         }
 
         window.vbo_end = prev_end;
     }
 
-    fn update_subtree(&self, window_cell: &RefCell<WindowBase>, vbo_data: &mut [VertexData]) {
+
+    fn update_window(&self, window_cell: &RefCell<WindowBase>, vbo_data: &mut [VertexData], full_update: bool) {
         let mut window = window_cell.borrow_mut();
 
         let new_pos: Vec2;
@@ -225,36 +235,40 @@ impl OverlayBase {
             new_size = Vec2{x: window.creation_data.size.x.z, y: window.creation_data.size.y.z};
         }
 
+        let mut coord_changed = false;
         if !window.pos.approx_eq(&new_pos) || !window.size.approx_eq(&new_size) {
             window.pos = new_pos;
             window.size = new_size;
+            coord_changed = true;
+        }
 
-            vbo_data[window.vbo_beg as usize] = VertexData {
-                pos: window.pos,
-                uv: window.creation_data.texcoord[0],
-                color: window.creation_data.color[0],
-            };
-            vbo_data[window.vbo_beg as usize + 1] = VertexData {
-                pos: window.pos + cgmath::vec2(window.size.x, 0.0),
-                uv: window.creation_data.texcoord[1],
-                color: window.creation_data.color[1],
-            };
-            vbo_data[window.vbo_beg as usize + 2] = VertexData {
-                pos: window.pos + window.size,
-                uv: window.creation_data.texcoord[3],
-                color: window.creation_data.color[3],
-            };
-            vbo_data[window.vbo_beg as usize + 3] = VertexData {
-                pos: window.pos + cgmath::vec2(0.0, window.size.y),
-                uv: window.creation_data.texcoord[2],
-                color: window.creation_data.color[2],
-            };
+        mem::drop(window);
+        let window = window_cell.borrow();
 
-            mem::drop(window);
-            let window = window_cell.borrow();
+        vbo_data[4 * window.vbo_beg as usize] = VertexData {
+            pos: window.pos,
+            uv: window.creation_data.texcoord[0],
+            color: window.creation_data.color[0],
+        };
+        vbo_data[4 * window.vbo_beg as usize + 1] = VertexData {
+            pos: window.pos + cgmath::vec2(window.size.x, 0.0),
+            uv: window.creation_data.texcoord[1],
+            color: window.creation_data.color[1],
+        };
+        vbo_data[4 * window.vbo_beg as usize + 2] = VertexData {
+            pos: window.pos + window.size,
+            uv: window.creation_data.texcoord[3],
+            color: window.creation_data.color[3],
+        };
+        vbo_data[4 * window.vbo_beg as usize + 3] = VertexData {
+            pos: window.pos + cgmath::vec2(0.0, window.size.y),
+            uv: window.creation_data.texcoord[2],
+            color: window.creation_data.color[2],
+        };
 
+        if full_update || coord_changed {
             for &index in &window.children {
-                self.update_subtree(&self.arena[index], vbo_data);
+                self.update_window(&self.arena[index], vbo_data, full_update);
             }
         }
     }

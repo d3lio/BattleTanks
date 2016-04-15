@@ -37,6 +37,7 @@ use glfw::{
 use std::rc::Rc;
 use std::ptr;
 use std::mem;
+use std::ffi::CStr;
 
 static VERTEX_DATA: [f32; 18] = [
     -1.0,  1.0, 0.0,
@@ -174,6 +175,12 @@ fn main() {
 
     gl::load_with(|symbol| window.get_proc_address(symbol) as *const _);
 
+    unsafe {
+        println!("GL Version: {:?}", CStr::from_ptr(gl::GetString(gl::VERSION) as *const _));
+        println!("GL Vendor: {:?}", CStr::from_ptr(gl::GetString(gl::VENDOR) as *const _));
+        println!("GL Renderer: {:?}", CStr::from_ptr(gl::GetString(gl::RENDERER) as *const _));
+    }
+
     Gliw::clear_color(0.0, 0.0, 0.4, 0.0);
     unsafe {
         gl::Enable(gl::BLEND);
@@ -195,7 +202,7 @@ fn main() {
     let ov = Overlay::new(800, 600);
     let wnd3 = ov.make_window("inner", WindowParams {
         pos: Vector2{x: cgmath::vec3(0.0, 0.0, 10.0), y: cgmath::vec3(0.0, 0.1, 0.0)},
-        size: Vector2{x: cgmath::vec3(1.0, 0.0, -20.0), y: cgmath::vec3(0.0, 0.8, 0.0)},
+        size: Vector2{x: cgmath::vec3(1.0, 0.0, -20.0), y: cgmath::vec3(0.0, 0.0, 40.0)},
         color: [cgmath::vec4(1.0, 1.0, 1.0, 1.0); 4],
         texcoord: [Vector2::zero(); 4]
     });
@@ -208,16 +215,25 @@ fn main() {
     let wnd2 = ov.make_window("wnd2", WindowParams {
         pos: Vector2{x: cgmath::vec3(0.2, 0.0, 10.0), y: Vector3::zero()},
         size: Vector2{x: cgmath::vec3(0.2, 0.0, -10.0), y: cgmath::vec3(0.0, 1.0, 0.0)},
-        color: [cgmath::vec4(1.0, 0.5, 0.5, 0.8); 4],
+        color: [cgmath::vec4(1.0, 0.5, 0.5, 0.9); 4],
         texcoord: [Vector2::zero(); 4],
     });
 
-    ov.root().add_child(&wnd1);
-    ov.root().add_child(&wnd2);
-    wnd1.add_child(&wnd3);
+    ov.root().attach_child(&wnd1);
+    ov.root().attach_child(&wnd2);
+    wnd1.attach_child(&wnd3);
     ov.update();
 
     while !window.should_close() {
+        let t = glfw.get_time();
+
+        wnd2.modify(|params| {
+            params.size.x = cgmath::vec3(0.4 + 0.2*f32::sin(t as f32), 0.0, -10.0);
+            params.color[0] = cgmath::vec4(0.75 - 0.25*f32::sin(t as f32), 0.2, 0.2, 0.9);
+            params.color[1] = cgmath::vec4(1.0, 0.5 + 0.25*f32::sin(t as f32), 0.2, 0.9);
+        });
+        ov.update();
+
         Gliw::clear(gl::COLOR_BUFFER_BIT);
 
         scene.draw();

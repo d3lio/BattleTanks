@@ -14,7 +14,7 @@ pub type Vec4 = Vector4<f32>;
 pub struct WindowBase {
     pub name: String,
     pub index: usize,
-    pub creation_data: BuildParams,
+    pub creation_data: WindowParams,
 
     pub pos: Vec2,
     pub size: Vec2,
@@ -27,22 +27,22 @@ pub struct WindowBase {
     pub vbo_end: isize,
 }
 
-#[derive(Clone)]
-pub struct BuildParams {
+#[derive(Clone, Copy)]
+pub struct WindowParams {
     pub pos: Vector2<Vec3>,
     pub size: Vector2<Vec3>,
     pub color: [Vec4; 4],
     pub texcoord: [Vec2; 4],
 }
 
-impl Debug for BuildParams {
+impl Debug for WindowParams {
     fn fmt(&self, f: &mut Formatter) -> Result<(), fmt::Error> {
-        write!(f, "BuildParams {{ ... }}")
+        write!(f, "WindowParams {{ ... }}")
     }
 }
 
 impl WindowBase {
-    pub fn new(name: &str, data: BuildParams) -> WindowBase {
+    pub fn new(name: &str, data: WindowParams) -> WindowBase {
         return WindowBase {
             name: String::from(name),
             index: usize::MAX,
@@ -84,10 +84,9 @@ impl WindowBase {
         };
     }
 
-    pub fn add_child(&mut self, ovl: &OverlayBase, child_index: usize) {
+    pub fn attach_child(&mut self, ovl: &OverlayBase, child_index: usize) {
         let mut child = ovl.window_from_index(child_index).borrow_mut();
 
-        // assert!(child.parent == None);
         if let Some(parent_index) = child.parent {
             panic!(format!("Cannot attach window \"{}\" to \"{}\" because it is already attached to window \"{}\"",
                 child.name,
@@ -95,8 +94,6 @@ impl WindowBase {
                 ovl.window_from_index(parent_index).borrow().full_name(ovl)));
         }
 
-        // assert!(self.child(ovl, &child.name) == None);
-        // TODO: `it` in the error message is ambigious
         if self.child(ovl, &child.name) != None {
             panic!(format!("Cannot attach window \"{}\" to \"{}\" because the second already has a child with the same name",
                 child.name,
@@ -107,7 +104,7 @@ impl WindowBase {
         child.parent = Some(self.index);
     }
 
-    fn full_name(&self, ovl: &OverlayBase) -> String {
+    pub fn full_name(&self, ovl: &OverlayBase) -> String {
         match self.parent {
             Some(index) => {
                 let parent = ovl.window_from_index(index).borrow();
