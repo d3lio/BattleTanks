@@ -48,6 +48,7 @@ pub struct Window<'a> {
 }
 
 impl<'a> Window<'a> {
+    /// Get a child by name
     pub fn child(&self, name: &str) -> Option<Window<'a>> {
         let ovl = self.ovl.borrow();
         let window = ovl.window_from_index(self.index).borrow();
@@ -78,25 +79,34 @@ impl<'a> Window<'a> {
         ovl.should_reindex.set(true);
     }
 
-    // pub fn detach_child(&self, child: &Window) -> bool {
-    //     assert!(self.ovl as *const RefCell<OverlayBase> == child.ovl as *const RefCell<OverlayBase>,
-    //         ERR_WINDOW_DIFF_OVERLAYS);
+    /// Detaches a child window.
+    ///
+    /// # Panics
+    /// If `self` and `child` belong to different `Overlay` objects. <br>
+    /// If `child` is not attached to `self`.
+    pub fn detach_child(&self, child: &Window) {
+        assert!(self.ovl as *const RefCell<OverlayBase> == child.ovl as *const RefCell<OverlayBase>,
+            ERR_WINDOW_DIFF_OVERLAYS);
 
-    //     let ovl = self.ovl.borrow();
-    //     let child_window = ovl.window_from_index(child.index).borrow();
+        let ovl = self.ovl.borrow();
+        let mut child_window = ovl.window_from_index(child.index).borrow_mut();
+        let child_parent = child_window.parent;
 
-    //     match child_window.parent {
-    //         Some(parent) if parent == self.index => {
-    //             // self_window.detach_child(&ovl, child.index);
-    //             // child_window.parent = None
+        match child_parent {
+            Some(parent) if parent == self.index => {
+                let mut window = ovl.window_from_index(self.index).borrow_mut();
+                window.detach_child(&ovl, child.index);
+                child_window.parent = None;
 
-    //             ovl.should_reindex.set(true);
-
-    //             return true;
-    //         },
-    //         _ => { return false; }
-    //     };
-    // }
+                ovl.should_reindex.set(true);
+            },
+            _ => {
+                panic!(format!("Attempting to detach window \"{}\" from non-parent window \"{}\"",
+                    ovl.window_from_index(self.index).borrow().full_name(&ovl),
+                    child_window.full_name(&ovl)));
+            }
+        }
+    }
 
     pub fn modify<F> (&self, mod_fn: F)
         where F: Fn(&mut WindowParams)

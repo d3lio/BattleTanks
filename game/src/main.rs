@@ -114,7 +114,7 @@ impl SimpleEntity {
             .load()
             .unwrap();
 
-        tex.pass_to(&*program, "tex", 0);
+        tex.pass_to(&program, "tex", 0);
 
         return SimpleEntity {
             vao: vao,
@@ -223,6 +223,9 @@ fn main() {
     ov.root().attach_child(&wnd2);
     wnd1.attach_child(&wnd3);
     ov.update();
+
+    wnd1.detach_child(&wnd1.child("inner").unwrap());
+    wnd2.attach_child(&wnd3);
 
     while !window.should_close() {
         let t = glfw.get_time();

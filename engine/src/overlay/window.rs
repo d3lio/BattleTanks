@@ -104,6 +104,12 @@ impl WindowBase {
         child.parent = Some(self.index);
     }
 
+    // Removes the given child from the vector of children
+    // Does not modify the parent of `child` - it must be set to `None` manually
+    pub fn detach_child(&mut self, _: &OverlayBase, child_index: usize) {
+        self.children.retain(|&index| index != child_index);
+    }
+
     pub fn full_name(&self, ovl: &OverlayBase) -> String {
         match self.parent {
             Some(index) => {
