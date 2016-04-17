@@ -40,22 +40,12 @@ impl Scene {
         return &mut self.camera;
     }
 
-    /// Wrap a `Renderable` in Rc + RefCell.
-    ///
-    /// You can, of cource, do this yourself but this function
-    /// checks wether the object is really a `Renderable`.
-    #[inline]
-    pub fn wrap<R: Renderable>(renderable: R) -> Rc<RefCell<R>> {
-        return NodeContainer::wrap(renderable);
-    }
-
     /// Downgrade a wrapped `Renderable`.
     ///
-    /// Just like `Scene.wrap`, this function
-    /// checks wether the object is really a `Renderable`.
+    /// See `engine::wrap!`
     #[inline]
     pub fn node<R: Renderable>(renderable: &Rc<RefCell<R>>) -> Weak<RefCell<R>> {
-        return NodeContainer::node(renderable);
+        NodeContainer::node(renderable)
     }
 
     /// Add a `Renderable` object to the scene.

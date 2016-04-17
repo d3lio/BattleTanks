@@ -1,6 +1,6 @@
 //! Internal container.
 
-use core::Renderable;
+use super::renderable::Renderable;
 
 use std::rc::{Rc, Weak};
 use std::cell::RefCell;
@@ -25,16 +25,10 @@ impl NodeContainer {
         };
     }
 
-    /// See `Scene.wrap`.
-    #[inline]
-    pub fn wrap<R: Renderable>(renderable: R) -> Rc<RefCell<R>> {
-        return Rc::new(RefCell::new(renderable));
-    }
-
     /// See `Scene.node`.
     #[inline]
     pub fn node<R: Renderable>(renderable: &Rc<RefCell<R>>) -> Weak<RefCell<R>> {
-        return Rc::downgrade(renderable);
+        Rc::downgrade(renderable)
     }
 
     /// Add a wrapped `Renderable`.
