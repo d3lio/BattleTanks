@@ -22,7 +22,6 @@ use cgmath::{Point3, Vector3, Matrix4};
 use glfw::{Action, Context, Key};
 
 use std::rc::Rc;
-use std::cell::RefCell;
 use std::ptr;
 use std::mem;
 
@@ -172,93 +171,91 @@ fn main() {
         .attach_fs(&fs)
         .link()
         .unwrap();
-    let entity = Rc::new(RefCell::new(SimpleEntity::new(Rc::new(program))));
+    let entity = Scene::wrap(SimpleEntity::new(Rc::new(program)));
 
-    let cuboid1_rc = Rc::new(RefCell::new(Cuboid::new(
+    let cuboid1 = Scene::wrap(Cuboid::new(
         Point3::new(0.0, 0.5, 0.0),
         Vector3::new(1.0, 1.0, 1.0),
-        Color::from_rgba(51, 102, 255, 255))));
+        Color::from_rgba(51, 102, 255, 255)));
 
-    let cuboid2_rc = Rc::new(RefCell::new(Cuboid::new(
+    let cuboid2 = Scene::wrap(Cuboid::new(
         Point3::new(1.375, 0.5, 1.0),
         Vector3::new(1.75, 1.0, 1.0),
-        Color::from_rgba(153, 153, 255, 255))));
+        Color::from_rgba(153, 153, 255, 255)));
 
-    let cuboid3_rc = Rc::new(RefCell::new(Cuboid::new(
+    let cuboid3 = Scene::wrap(Cuboid::new(
         Point3::new(1.375, 0.875, -0.375),
         Vector3::new(1.0, 1.0, 1.0),
-        Color::from_rgba(255, 0, 102, 255))));
+        Color::from_rgba(255, 0, 102, 255)));
 
-    let cuboid4_rc = Rc::new(RefCell::new(Composition::new(Cuboid::new(
+    let cuboid4 = Scene::wrap(Composition::new(Cuboid::new(
         Point3::new(-2.0, 0.5, 1.0),
         Vector3::new(1.0, 1.0, 1.0),
-        Color::from_rgba(51, 204, 51, 255)))));
+        Color::from_rgba(51, 204, 51, 255))));
 
-    let cuboid4_child_comp_rc = Rc::new(RefCell::new(Composition::new(Cuboid::new(
+    let cuboid4_child_comp = Scene::wrap(Composition::new(Cuboid::new(
         Point3::new(0.0, 0.75, 0.0),
-        Vector3::new(0.5, 0.5, 0.5),
-        Color::from_rgba(153, 204, 0, 255)))));
-
-    let cuboid4_child_comp_child_rc = Rc::new(RefCell::new(Cuboid::new(
-        Point3::new(-1.0, 0.75, 0.0),
         Vector3::new(0.5, 0.5, 0.5),
         Color::from_rgba(153, 204, 0, 255))));
 
-    cuboid4_rc.borrow_mut().add(Rc::downgrade(&cuboid4_child_comp_rc));
-    cuboid4_child_comp_rc.borrow_mut().add(Rc::downgrade(&cuboid4_child_comp_child_rc));
+    let cuboid4_child_comp_child = Scene::wrap(Cuboid::new(
+        Point3::new(-1.0, 0.75, 0.0),
+        Vector3::new(0.5, 0.5, 0.5),
+        Color::from_rgba(153, 204, 0, 255)));
 
-    let cuboid5_rc = Rc::new(RefCell::new(Cuboid::new(
+    cuboid4.borrow_mut().add(Scene::node(&cuboid4_child_comp));
+    cuboid4_child_comp.borrow_mut().add(Scene::node(&cuboid4_child_comp_child));
+
+    let cuboid5 = Scene::wrap(Cuboid::new(
         Point3::new(-1.0, 0.5, -1.0),
         Vector3::new(1.0, 1.0, 1.0),
-        Color::from_rgba(255, 102, 0, 255))));
-    cuboid5_rc.borrow_mut().look_at(
+        Color::from_rgba(255, 102, 0, 255)));
+    cuboid5.borrow_mut().look_at(
         Vector3::new(-2.0, 0.0, -2.0),
         Vector3::new(0.0, 1.0, 0.0));
 
-    let cuboid6_rc = Rc::new(RefCell::new(Cuboid::new(
+    let cuboid6 = Scene::wrap(Cuboid::new(
         Point3::new(-2.5, 0.25, -0.5),
         Vector3::new(0.5, 0.5, 0.5),
-        Color::from_rgba(255, 204, 0, 255))));
+        Color::from_rgba(255, 204, 0, 255)));
 
-
-    let platform = Rc::new(RefCell::new(Cuboid::new(
+    let platform = Scene::wrap(Cuboid::new(
         Point3::new(0.0, -0.05, 0.0),
         Vector3::new(7.0, 0.1, 4.0),
-        Color::from_rgba(153, 51, 255, 255))));
+        Color::from_rgba(153, 51, 255, 255)));
 
     let mut scene = Scene::new(camera);
-    scene.add(Rc::downgrade(&platform));
-    scene.add(Rc::downgrade(&entity));
-    scene.add(Rc::downgrade(&cuboid1_rc));
-    scene.add(Rc::downgrade(&cuboid2_rc));
-    scene.add(Rc::downgrade(&cuboid3_rc));
-    scene.add(Rc::downgrade(&cuboid4_rc));
-    scene.add(Rc::downgrade(&cuboid5_rc));
-    scene.add(Rc::downgrade(&cuboid6_rc));
-    scene.add(Rc::downgrade(&cuboid6_rc));
+    scene.add(Scene::node(&platform));
+    scene.add(Scene::node(&entity));
+    scene.add(Scene::node(&cuboid1));
+    scene.add(Scene::node(&cuboid2));
+    scene.add(Scene::node(&cuboid3));
+    scene.add(Scene::node(&cuboid4));
+    scene.add(Scene::node(&cuboid5));
+    scene.add(Scene::node(&cuboid6));
 
     let animation_speed = 2.0;
     let camera_speed = 0.5;
-    let cuboid3_scale = cuboid3_rc.borrow().scale();
-    let cuboid4_pos_x = cuboid4_rc.borrow().position().x;
+    let cuboid3_scale = cuboid3.borrow().scale();
+    let cuboid4_pos_x = cuboid4.borrow().position().x;
 
     while !window.should_close() {
         Gliw::clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
 
-        cuboid3_rc.borrow_mut().scale_to(cuboid3_scale +
+        cuboid3.borrow_mut().scale_to(cuboid3_scale +
             (f64::sin(glfw.get_time() * animation_speed) as f32) * 0.75);
 
-        cuboid4_rc.borrow_mut().center().x = cuboid4_pos_x +
+        cuboid4.borrow_mut().center().x = cuboid4_pos_x +
             f64::sin(glfw.get_time() * animation_speed) as f32;
 
-        cuboid6_rc.borrow_mut().look_at(
+        cuboid6.borrow_mut().look_at(
             Vector3::new(
                 f64::cos(glfw.get_time() * animation_speed) as f32,
                 0.0,
                 f64::sin(glfw.get_time() * animation_speed) as f32),
             Vector3::new(0.0, 1.0, 0.0));
 
-        cuboid4_child_comp_rc.borrow_mut().look_at(
+        cuboid4_child_comp.borrow_mut().look_at(
             Vector3::new(
                 f64::sin(glfw.get_time() * animation_speed) as f32,
                 0.0,

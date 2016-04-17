@@ -53,7 +53,3 @@ impl Camera {
         self.vp_matrix = self.proj_matrix * self.view_matrix;
     }
 }
-
-// impl Entity for Camera {
-//     // TODO
-// }

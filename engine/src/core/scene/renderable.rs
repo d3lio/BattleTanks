@@ -7,6 +7,8 @@ use core::Camera;
 /// Determines if an object is renderable and defines its properties.
 pub trait Renderable {
     /// Specifies the order in which the objects will be rendered in a `Scene`.
+    ///
+    /// Defaults to `0`.
     fn priority(&self) -> u32 {
         return 0;
     }

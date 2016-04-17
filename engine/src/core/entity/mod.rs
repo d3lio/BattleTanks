@@ -5,6 +5,9 @@ pub mod cuboid;
 use self::cgmath::{Point3, Vector3, Quaternion};
 
 /// Entity trait representing basic transformations.
+///
+/// #Important
+/// This trait will be refactured in the near future to meet the entity-component system requirements.
 pub trait Entity {
     /// Get the position.
     fn position(&self) -> Point3<f32>;
@@ -27,7 +30,10 @@ pub trait Entity {
     fn look_at(&mut self, dir: Vector3<f32>, up: Vector3<f32>);
 
     /// Relative multiplicative scale.
-    fn scale_by(&mut self, units: f32);
+    fn scale_by(&mut self, units: f32) {
+        let scale = self.scale();
+        self.scale_to(scale * units);
+    }
 
     /// Non relative scale.
     fn scale_to(&mut self, units: f32);
