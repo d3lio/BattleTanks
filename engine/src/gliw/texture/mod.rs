@@ -3,7 +3,9 @@ extern crate gl;
 pub mod builder;
 
 use gliw::program::Program;
-use gliw::uniform::UniformData;
+use gliw::uniform::{Uniform, UniformData};
+
+use std::rc::Rc;
 
 #[repr(u32)]
 #[derive(Copy, Clone)]
@@ -52,7 +54,7 @@ impl Texture {
     }
 
     /// Passes the texture the the given `program` and `sampler_name` on `tex_unit`.
-    pub fn pass_to(&self, prog: &Program, sampler_name: &str, tex_unit: u32) {
+    pub fn pass_to(&self, prog: &Rc<Program>, sampler_name: &str, tex_unit: u32) {
         unsafe {
             // Avoiding `glGetError`
             if tex_unit >= gl::MAX_COMBINED_TEXTURE_IMAGE_UNITS {
@@ -61,7 +63,7 @@ impl Texture {
             gl::ActiveTexture(gl::TEXTURE0 + tex_unit);
         }
         self.bind();
-        prog.uniform(sampler_name).value(UniformData::Int1(tex_unit as i32));
+        Uniform::new(prog, sampler_name).value(UniformData::Int1(tex_unit as i32));
     }
 
     /// Get the texture's type (target).

@@ -3,7 +3,7 @@ extern crate cgmath;
 
 use gliw::{
     Buffer, BufferType, BufferUsagePattern,
-    Program, ProgramBuilder,
+    Program, ProgramBuilder, Uniform,
     Shader, ShaderType,
     UniformData,
     Vao,
@@ -16,6 +16,7 @@ use math::RotMat;
 
 use self::cgmath::{Point, Point3, Vector3, Vector4, Matrix4, Quaternion, Rotation};
 
+use std::rc::Rc;
 use std::ptr;
 use std::mem;
 
@@ -84,7 +85,7 @@ pub struct Cuboid {
     vao: Vao,
     vbo: Buffer,        // FIXME: should be static
     ebo: Buffer,        // FIXME: should be static
-    program: Program    // FIXME: should be static
+    program: Rc<Program>    // FIXME: should be static
 }
 
 impl Cuboid {
@@ -192,10 +193,10 @@ impl Renderable for Cuboid {
         let mvp_matrix = camera.vp_matrix() * draw_space * self.model_matrix();
 
         unsafe {
-            self.program.uniform("cuboid_color").value(UniformData::FloatVec(4,
+            Uniform::new(&self.program, "cuboid_color").value(UniformData::FloatVec(4,
                 &mem::transmute::<Vector4<f32>, [f32; 4]>(self.color)));
 
-            self.program.uniform("mvp").value(UniformData::FloatMat(4, false,
+            Uniform::new(&self.program, "mvp").value(UniformData::FloatMat(4, false,
                 &mem::transmute::<Matrix4<f32>, [f32; 16]>(mvp_matrix)));
         }
 

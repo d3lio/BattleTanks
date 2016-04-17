@@ -114,7 +114,7 @@ impl Renderable for SimpleEntity {
         let mvp_matrix = camera.vp_matrix() * draw_space * self.model_matrix;
 
         unsafe {
-            self.program.uniform("mvp").value(UniformData::FloatMat(4, false,
+            Uniform::new(&self.program, "mvp").value(UniformData::FloatMat(4, false,
                 &mem::transmute::<Matrix4<f32>, [f32; 16]>(mvp_matrix)));
         }
 
@@ -171,7 +171,7 @@ fn main() {
         .attach_fs(&fs)
         .link()
         .unwrap();
-    let entity = Scene::wrap(SimpleEntity::new(Rc::new(program)));
+    let entity = Scene::wrap(SimpleEntity::new(program.clone()));
 
     let cuboid1 = Scene::wrap(Cuboid::new(
         Point3::new(0.0, 0.5, 0.0),

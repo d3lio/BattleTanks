@@ -2,8 +2,7 @@ extern crate gl;
 
 use gliw::{Program, Shader, ShaderType};
 
-use std::cell::RefCell;
-use std::collections::HashMap;
+use std::rc::Rc;
 use std::ffi::CString;
 use std::ptr;
 
@@ -44,44 +43,44 @@ impl<'a> ProgramBuilder<'a> {
     }
 
     /// Set compute shader to attach.
-    pub fn attach_cs (&mut self, shader: &'a Shader) -> &'a mut ProgramBuilder {
+    pub fn attach_cs(&mut self, shader: &'a Shader) -> &'a mut ProgramBuilder {
         // TODO: check if shader is compute shader?
         self.cs = Some(shader);
         return self;
     }
 
     /// Set vertex shader to attach.
-    pub fn attach_vs (&mut self, shader: &'a Shader) -> &'a mut ProgramBuilder {
+    pub fn attach_vs(&mut self, shader: &'a Shader) -> &'a mut ProgramBuilder {
         self.vs = Some(shader);
         return self;
     }
 
     /// Set tesselation control shader to attach.
-    pub fn attach_tcs (&mut self, shader: &'a Shader) -> &'a mut ProgramBuilder {
+    pub fn attach_tcs(&mut self, shader: &'a Shader) -> &'a mut ProgramBuilder {
         self.tcs = Some(shader);
         return self;
     }
 
     /// Set tesselation evaluation shader to attach.
-    pub fn attach_tes (&mut self, shader: &'a Shader) -> &'a mut ProgramBuilder {
+    pub fn attach_tes(&mut self, shader: &'a Shader) -> &'a mut ProgramBuilder {
         self.tes = Some(shader);
         return self;
     }
 
     /// Set geometry shader to attach.
-    pub fn attach_gs (&mut self, shader: &'a Shader) -> &'a mut ProgramBuilder {
+    pub fn attach_gs(&mut self, shader: &'a Shader) -> &'a mut ProgramBuilder {
         self.gs = Some(shader);
         return self;
     }
 
     /// Set fragment shader to attach.
-    pub fn attach_fs (&mut self, shader: &'a Shader) -> &'a mut ProgramBuilder {
+    pub fn attach_fs(&mut self, shader: &'a Shader) -> &'a mut ProgramBuilder {
         self.fs = Some(shader);
         return self;
     }
 
     /// Links a program object using the attached shaders.
-    pub fn link(&self) -> Result<Program, String> {
+    pub fn link(&self) -> Result<Rc<Program>, String> {
         unsafe {
             let prog = gl::CreateProgram();
 
@@ -114,10 +113,9 @@ impl<'a> ProgramBuilder<'a> {
             if let Some(shader) = self.gs { gl::DetachShader(prog, shader.handle()); }
             if let Some(shader) = self.fs { gl::DetachShader(prog, shader.handle()); }
 
-            return Ok(Program{
+            return Ok(Rc::new(Program {
                 handle: prog,
-                uniforms: RefCell::new(HashMap::new()),
-            });
+            }));
         }
     }
 }
@@ -192,7 +190,7 @@ impl<'a> ProgramFromFileBuilder<'a> {
     }
 
     /// Compiles the provided shaders and links them into a program.
-    pub fn compile(&self) -> Result<Program, String> {
+    pub fn compile(&self) -> Result<Rc<Program>, String> {
         let cs: Shader;
         let vs: Shader;
         let tcs: Shader;
