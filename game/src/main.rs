@@ -1,3 +1,4 @@
+#[macro_use(wrap)]
 extern crate engine;
 extern crate cgmath;
 extern crate glfw;
@@ -171,34 +172,34 @@ fn main() {
         .attach_fs(&fs)
         .link()
         .unwrap();
-    let entity = Scene::wrap(SimpleEntity::new(program.clone()));
+    let entity = wrap!(SimpleEntity::new(program.clone()));
 
-    let cuboid1 = Scene::wrap(Cuboid::new(
+    let cuboid1 = wrap!(Cuboid::new(
         Point3::new(0.0, 0.5, 0.0),
         Vector3::new(1.0, 1.0, 1.0),
         Color::from_rgba(51, 102, 255, 255)));
 
-    let cuboid2 = Scene::wrap(Cuboid::new(
+    let cuboid2 = wrap!(Cuboid::new(
         Point3::new(1.375, 0.5, 1.0),
         Vector3::new(1.75, 1.0, 1.0),
         Color::from_rgba(153, 153, 255, 255)));
 
-    let cuboid3 = Scene::wrap(Cuboid::new(
+    let cuboid3 = wrap!(Cuboid::new(
         Point3::new(1.375, 0.875, -0.375),
         Vector3::new(1.0, 1.0, 1.0),
         Color::from_rgba(255, 0, 102, 255)));
 
-    let cuboid4 = Scene::wrap(Composition::new(Cuboid::new(
+    let cuboid4 = wrap!(Composition::new(Cuboid::new(
         Point3::new(-2.0, 0.5, 1.0),
         Vector3::new(1.0, 1.0, 1.0),
         Color::from_rgba(51, 204, 51, 255))));
 
-    let cuboid4_child_comp = Scene::wrap(Composition::new(Cuboid::new(
+    let cuboid4_child_comp = wrap!(Composition::new(Cuboid::new(
         Point3::new(0.0, 0.75, 0.0),
         Vector3::new(0.5, 0.5, 0.5),
         Color::from_rgba(153, 204, 0, 255))));
 
-    let cuboid4_child_comp_child = Scene::wrap(Cuboid::new(
+    let cuboid4_child_comp_child = wrap!(Cuboid::new(
         Point3::new(-1.0, 0.75, 0.0),
         Vector3::new(0.5, 0.5, 0.5),
         Color::from_rgba(153, 204, 0, 255)));
@@ -206,7 +207,7 @@ fn main() {
     cuboid4.borrow_mut().add(Scene::node(&cuboid4_child_comp));
     cuboid4_child_comp.borrow_mut().add(Scene::node(&cuboid4_child_comp_child));
 
-    let cuboid5 = Scene::wrap(Cuboid::new(
+    let cuboid5 = wrap!(Cuboid::new(
         Point3::new(-1.0, 0.5, -1.0),
         Vector3::new(1.0, 1.0, 1.0),
         Color::from_rgba(255, 102, 0, 255)));
@@ -214,12 +215,12 @@ fn main() {
         Vector3::new(-2.0, 0.0, -2.0),
         Vector3::new(0.0, 1.0, 0.0));
 
-    let cuboid6 = Scene::wrap(Cuboid::new(
+    let cuboid6 = wrap!(Cuboid::new(
         Point3::new(-2.5, 0.25, -0.5),
         Vector3::new(0.5, 0.5, 0.5),
         Color::from_rgba(255, 204, 0, 255)));
 
-    let platform = Scene::wrap(Cuboid::new(
+    let platform = wrap!(Cuboid::new(
         Point3::new(0.0, -0.05, 0.0),
         Vector3::new(7.0, 0.1, 4.0),
         Color::from_rgba(153, 51, 255, 255)));

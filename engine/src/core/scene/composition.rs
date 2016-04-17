@@ -4,9 +4,8 @@ use self::cgmath::Matrix4;
 
 use super::node_container::NodeContainer;
 
+use super::camera::Camera;
 use super::renderable::Renderable;
-
-use core::Camera;
 
 use std::rc::Weak;
 use std::cell::RefCell;
@@ -31,8 +30,8 @@ impl<T: Renderable> Composition<T> {
     /// Create a new `Composition` wrapper for a `Renderable`.
     pub fn new(renderable: T) -> Composition<T> {
         return Composition {
-            children: RefCell::new(NodeContainer::new()),
-            renderable: renderable
+            renderable: renderable,
+            children: RefCell::new(NodeContainer::new())
         };
     }
 

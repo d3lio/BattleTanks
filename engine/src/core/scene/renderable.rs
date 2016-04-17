@@ -2,7 +2,7 @@ extern crate cgmath;
 
 use self::cgmath::Matrix4;
 
-use core::Camera;
+use super::camera::Camera;
 
 /// Determines if an object is renderable and defines its properties.
 pub trait Renderable {

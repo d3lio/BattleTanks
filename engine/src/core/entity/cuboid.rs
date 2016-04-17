@@ -1,6 +1,8 @@
 extern crate gl;
 extern crate cgmath;
 
+use self::cgmath::{Point, Point3, Vector3, Vector4, Matrix4, Quaternion, Rotation};
+
 use gliw::{
     Buffer, BufferType, BufferUsagePattern,
     Program, ProgramBuilder, Uniform,
@@ -14,61 +16,9 @@ use core::{Camera, Renderable, Entity};
 
 use math::RotMat;
 
-use self::cgmath::{Point, Point3, Vector3, Vector4, Matrix4, Quaternion, Rotation};
-
 use std::rc::Rc;
 use std::ptr;
 use std::mem;
-
-const VS_SRC: &'static str = r#"
-    #version 330 core
-
-    uniform mat4 mvp;
-
-    layout (location = 0) in vec3 vs_position;
-
-    void main() {
-        gl_Position = mvp * vec4(vs_position, 1.0);
-    }
-"#;
-
-const FS_SRC: &'static str = r#"
-    #version 330 core
-
-    uniform vec4 cuboid_color;
-
-    out vec4 color;
-
-    void main() {
-        color = cuboid_color;
-    }
-"#;
-
-static VERTICES: [f32; 8*3] = [
-    -0.5, -0.5, -0.5,
-    -0.5, -0.5,  0.5,
-    -0.5,  0.5, -0.5,
-    -0.5,  0.5,  0.5,
-     0.5, -0.5, -0.5,
-     0.5, -0.5,  0.5,
-     0.5,  0.5, -0.5,
-     0.5,  0.5,  0.5,
-];
-
-static ELEMENTS: [u8; 12*3] = [
-    0, 1, 3,
-    0, 3, 2,
-    5, 4, 6,
-    5, 6, 7,
-    1, 0, 4,
-    1, 4, 5,
-    6, 2, 3,
-    6, 3, 7,
-    4, 0, 2,
-    4, 2, 6,
-    3, 1, 5,
-    3, 5, 7,
-];
 
 /// A general purpose cuboid entity.
 #[allow(dead_code)]
@@ -205,3 +155,53 @@ impl Renderable for Cuboid {
         unsafe { gl::DrawElements(gl::TRIANGLES, 12*3, gl::UNSIGNED_BYTE, ptr::null()); }
     }
 }
+
+const VS_SRC: &'static str = r#"
+    #version 330 core
+
+    uniform mat4 mvp;
+
+    layout (location = 0) in vec3 vs_position;
+
+    void main() {
+        gl_Position = mvp * vec4(vs_position, 1.0);
+    }
+"#;
+
+const FS_SRC: &'static str = r#"
+    #version 330 core
+
+    uniform vec4 cuboid_color;
+
+    out vec4 color;
+
+    void main() {
+        color = cuboid_color;
+    }
+"#;
+
+static VERTICES: [f32; 8*3] = [
+    -0.5, -0.5, -0.5,
+    -0.5, -0.5,  0.5,
+    -0.5,  0.5, -0.5,
+    -0.5,  0.5,  0.5,
+     0.5, -0.5, -0.5,
+     0.5, -0.5,  0.5,
+     0.5,  0.5, -0.5,
+     0.5,  0.5,  0.5,
+];
+
+static ELEMENTS: [u8; 12*3] = [
+    0, 1, 3,
+    0, 3, 2,
+    5, 4, 6,
+    5, 6, 7,
+    1, 0, 4,
+    1, 4, 5,
+    6, 2, 3,
+    6, 3, 7,
+    4, 0, 2,
+    4, 2, 6,
+    3, 1, 5,
+    3, 5, 7,
+];
