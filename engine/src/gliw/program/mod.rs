@@ -6,7 +6,7 @@ pub mod builder;
 ///
 /// Created using `ProgramBuilder` or `ProgramFromFileBuilder`.
 pub struct Program {
-    pub handle: u32,
+    handle: u32,
 }
 
 impl Program {
