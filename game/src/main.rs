@@ -222,7 +222,6 @@ fn main() {
     ov.root().attach_child(&wnd1);
     ov.root().attach_child(&wnd2);
     wnd1.attach_child(&wnd3);
-    ov.update();
 
     wnd1.detach_child(&wnd1.child("inner").unwrap());
     wnd2.attach_child(&wnd3);
@@ -235,7 +234,6 @@ fn main() {
             params.color[0] = cgmath::vec4(0.75 - 0.25*f32::sin(t as f32), 0.2, 0.2, 0.9);
             params.color[1] = cgmath::vec4(1.0, 0.5 + 0.25*f32::sin(t as f32), 0.2, 0.9);
         });
-        ov.update();
 
         Gliw::clear(gl::COLOR_BUFFER_BIT);
 
