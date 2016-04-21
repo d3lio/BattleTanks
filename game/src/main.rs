@@ -202,7 +202,7 @@ fn main() {
     let cuboid4_child_comp_child = wrap!(Cuboid::new(
         Point3::new(-1.0, 0.75, 0.0),
         Vector3::new(0.5, 0.5, 0.5),
-        Color::from_rgba(153, 204, 0, 255)));
+        Color::from_rgba(0, 204, 102, 255)));
 
     cuboid4.borrow_mut().add(Scene::node(&cuboid4_child_comp));
     cuboid4_child_comp.borrow_mut().add(Scene::node(&cuboid4_child_comp_child));

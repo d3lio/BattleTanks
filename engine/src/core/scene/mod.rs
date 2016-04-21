@@ -16,7 +16,7 @@ use self::renderable::Renderable;
 use std::rc::{Rc, Weak};
 use std::cell::RefCell;
 
-/// A structure used for rendering `Renderable` objects.
+/// Single threaded structure used for rendering `Renderable` objects.
 ///
 /// The scene uses a render priority system where the lower priority targets will be rendered earlier
 /// meaning that they will get overlapped by higher priority objects.

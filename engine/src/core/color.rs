@@ -10,7 +10,7 @@ macro_rules! clamp {
     }
 }
 
-/// A color builder.
+/// Color builder.
 ///
 /// # References
 /// * [Wikipedia](https://en.wikipedia.org/wiki/HSL_and_HSV#Converting_to_RGB)

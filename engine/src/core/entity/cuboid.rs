@@ -33,14 +33,15 @@ pub struct Cuboid {
     priority: u32,
 
     vao: Vao,
-    vbo: Buffer,        // FIXME: should be static
-    ebo: Buffer,        // FIXME: should be static
-    program: Rc<Program>    // FIXME: should be static
+    vbo: Buffer,    // FIXME: should be static
+    ebo: Buffer,    // FIXME: should be static
+    program: Rc<Program>
 }
 
 impl Cuboid {
     /// Creates a new cuboid from given center, dimensions and color.
     pub fn new(center: Point3<f32>, dimensions: Vector3<f32>, color: Vector4<f32>) -> Cuboid {
+        // FIXME: should be static
         let program = ProgramBuilder::new()
             .attach_vs(&Shader::new(ShaderType::Vertex, VS_SRC).unwrap())
             .attach_fs(&Shader::new(ShaderType::Fragment, FS_SRC).unwrap())

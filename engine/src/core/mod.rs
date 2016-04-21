@@ -1,6 +1,6 @@
 //! The engine's core module.
 //!
-//! It contains any virtual world abstractions.
+//! It contains any virtual world abstractions and helper structures.
 
 mod color;
 mod entity;

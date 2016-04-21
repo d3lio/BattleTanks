@@ -11,7 +11,7 @@ use std::rc::Weak;
 use std::cell::RefCell;
 use std::ops::{Deref, DerefMut};
 
-/// A structure used for holding relative objects.
+/// Single threaded structure used for holding relative objects.
 ///
 /// This structure provides a way to render relative objects.
 /// It's a wrapper for any `Renderable` and has a `NodeContainer` for child objects.

@@ -9,7 +9,7 @@ use std::ops::{Deref, DerefMut};
 // FIXME: if the priority of an object changes prior to it's insertion,
 // it will break the priority mechanism.
 
-/// A container for wrapped `Renderables`.
+/// Container for wrapped `Renderables`.
 ///
 /// See `Scene` for more info on how this object works.
 /// See `NodeContainer.wrap`.
