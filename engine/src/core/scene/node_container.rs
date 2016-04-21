@@ -18,7 +18,7 @@ pub struct NodeContainer {
 }
 
 impl NodeContainer {
-    /// Create a new `NodeContainer`.
+    /// Create a new node container.
     pub fn new() -> NodeContainer {
         return NodeContainer {
             container: Vec::new()

@@ -27,7 +27,7 @@ pub struct Scene {
 }
 
 impl Scene {
-    /// Create a new `Scene`.
+    /// Create a new scene.
     pub fn new(camera: Camera) -> Scene {
         return Scene {
             camera: camera,

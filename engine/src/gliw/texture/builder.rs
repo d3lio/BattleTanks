@@ -55,7 +55,8 @@ pub enum TextureFilter {
 /// #   Program, ProgramBuilder,
 /// #   TextureBuilder2D, ImageType, TextureCoordWrap, TextureFilter
 /// # };
-/// let program: Program; // ...obtain a program somehow
+/// # use std::rc::Rc;
+/// let program: Rc<Program>; // ...obtain a program somehow
 /// # program = ProgramBuilder::new().link().unwrap();
 /// let tex = TextureBuilder2D::new()
 ///     .source("pink_panther.bmp", ImageType::Bmp)
@@ -75,7 +76,8 @@ pub enum TextureFilter {
 /// #   Program, ProgramBuilder,
 /// #   TextureBuilder2D, ImageType, TextureCoordWrap, TextureFilter
 /// # };
-/// let program: Program; // ...obtain a program somehow
+/// # use std::rc::Rc;
+/// let program: Rc<Program>; // ...obtain a program somehow
 /// # program = ProgramBuilder::new().link().unwrap();
 /// let tex = TextureBuilder2D::new()
 ///     .source("pink_panther.bmp", ImageType::Bmp)
@@ -190,12 +192,12 @@ impl TextureBuilder2D {
             gl::TexParameteri(tex.tex_type() as u32, gl::TEXTURE_WRAP_T, self.t_wrap as i32);
 
             match self.min_filter {
-                TextureFilter::None => (),
+                TextureFilter::None => {},
                 _ => gl::TexParameteri(tex.tex_type() as u32, gl::TEXTURE_MIN_FILTER, self.min_filter as i32)
             }
 
             match self.mag_filter {
-                TextureFilter::None => (),
+                TextureFilter::None => {},
                 _ => gl::TexParameteri(tex.tex_type() as u32, gl::TEXTURE_MAG_FILTER, self.mag_filter as i32)
             }
 
@@ -232,7 +234,7 @@ impl TextureBuilder2D {
                 return Some(String::from(INCORRECT_FORMAT)),
             Err(err) =>
                 return Some(String::from(format!("{}", err))),
-            Ok(_) => ()
+            Ok(_) => {}
         }
 
         // Check if the format is truely bitmap

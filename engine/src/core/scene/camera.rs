@@ -9,7 +9,7 @@ use self::cgmath::{
 #[derive(Copy, Clone)]
 /// A structure used for holding the view and projection matrices.
 ///
-/// See `Scene`
+/// See `Scene`.
 pub struct Camera {
     view_matrix: Matrix4<f32>,
     proj_matrix: Matrix4<f32>,
@@ -18,7 +18,7 @@ pub struct Camera {
 }
 
 impl Camera {
-    /// Create a new `Camera`
+    /// Create a new camera.
     pub fn new() -> Camera {
         return Camera {
             view_matrix: Matrix4::identity(),
@@ -36,7 +36,7 @@ impl Camera {
         };
     }
 
-    /// Get VP matrix;
+    /// Get VP matrix.
     pub fn vp_matrix(&self) -> Matrix4<f32> {
         return self.vp_matrix;
     }

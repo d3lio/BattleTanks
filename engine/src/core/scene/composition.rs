@@ -21,13 +21,15 @@ use std::ops::{Deref, DerefMut};
 ///
 /// Since the `Composition` is a `Renderable` itself we come across its most powerful
 /// feature - it can hold other `Composition`s as children.
+///
+/// It's also self sustaining like the `Scene`.
 pub struct Composition<T: Renderable> {
     renderable: T,
     children: RefCell<NodeContainer>
 }
 
 impl<T: Renderable> Composition<T> {
-    /// Create a new `Composition` wrapper for a `Renderable`.
+    /// Create a new composition wrapper for a `Renderable`.
     pub fn new(renderable: T) -> Composition<T> {
         return Composition {
             renderable: renderable,
