@@ -14,7 +14,7 @@ pub struct WindowBase {
 
     pub pos: Vec2,
     pub size: Vec2,
-    pub shown: bool,
+    pub shown: bool,    // TODO: move inside WindowParams?
 
     pub children: Vec<usize>,
     pub parent: Option<usize>,

@@ -1,7 +1,11 @@
+extern crate cgmath;
+
 use overlay::OverlayBase;
 use overlay::WindowParams;
 
 use std::cell::RefCell;
+
+pub type Vec2 = cgmath::Vector2<f32>;
 
 /// Single threaded Overlay.
 pub struct Overlay {
@@ -35,18 +39,18 @@ impl Overlay {
     pub fn make_window(&self, name: &str, data: WindowParams) -> Window {
         let index = self.internal.borrow_mut().make_window(name, data);
 
-        Window {
+        return Window {
             ovl: &self.internal,
             index: index,
-        }
+        };
     }
 
     /// Get a handle to the root window.
     pub fn root(&self) -> Window {
-        Window {
+        return Window {
             ovl: &self.internal,
             index: 0,
-        }
+        };
     }
 
     /// Get a handle to a window from an absolute path, i.e. a path that starts at the root window.
@@ -78,6 +82,13 @@ impl Overlay {
         }
 
         return self.root().child(path);
+    }
+
+    /// Get iterator over the internal storage of all windows.
+    pub fn iter<'a> (&'a self) -> Box<Iterator<Item=Window<'a>> + 'a> {
+        let range = 0 .. self.internal.borrow().arena.len();
+
+        Box::new(range.into_iter().map(move |i| Window{ovl: &self.internal, index: i}))
     }
 }
 
@@ -171,6 +182,7 @@ impl<'a> Window<'a> {
     /// # Panics
     /// If `self` and `child` belong to different `Overlay` objects. <br>
     /// If `child` is not attached to `self`.
+    ///
     pub fn detach_child(&self, child: &Window) {
         assert!(self.ovl as *const RefCell<OverlayBase> == child.ovl as *const RefCell<OverlayBase>,
             ERR_WINDOW_DIFF_OVERLAYS);
@@ -221,6 +233,11 @@ impl<'a> Window<'a> {
         ovl.should_update.push(self.index);
     }
 
+    pub fn name(&self) -> String {
+        let ovl = self.ovl.borrow();
+        return ovl.window(self.index).name.clone();
+    }
+
     /// Returns the full path to the window
     ///
     /// If the window is attached to the overlay root the returned string is an absolute path.
@@ -233,12 +250,38 @@ impl<'a> Window<'a> {
 
         match window.parent {
             Some(index) => {
-                Window{ovl: self.ovl, index: index}.full_path() + "." + &window.name
+                return Window{ovl: self.ovl, index: index}.full_path() + "." + &window.name;
             },
             None => {
-                window.name.clone()
+                return window.name.clone();
             }
         }
+    }
+
+    pub fn pos(&self) -> Vec2 {
+        self.ovl.borrow_mut().update();
+        return self.ovl.borrow().window(self.index).pos;
+    }
+
+    pub fn size(&self) -> Vec2 {
+        self.ovl.borrow_mut().update();
+        return self.ovl.borrow().window(self.index).size;
+    }
+
+    pub fn children<'b> (&'b self) -> Box<Iterator<Item=Window<'b>> + 'b> {
+        let ovl = self.ovl.borrow();
+        let window = ovl.window(self.index);
+        let range = 0 .. window.children.len();
+
+        Box::new(range.into_iter().map(move |i| Window{ovl: self.ovl, index: i}))
+    }
+
+    pub fn parent(&self) -> Option<Window<'a>> {
+        let ovl = self.ovl.borrow();
+        match ovl.window(self.index).parent {
+            Some(parent_index) => return Some(Window{ovl: self.ovl, index: parent_index}),
+            None => return None,
+        };
     }
 }
 
