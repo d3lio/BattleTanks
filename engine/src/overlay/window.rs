@@ -1,14 +1,17 @@
 extern crate cgmath;
 
 use self::cgmath::{Vector2, Vector3, Vector4, Vector};
+use std::cell::RefCell;
+use std::rc::{Rc, Weak};
 use std::fmt::{self, Debug, Formatter};
 
 pub type Vec2 = Vector2<f32>;
 pub type Vec3 = Vector3<f32>;
 pub type Vec4 = Vector4<f32>;
 
-#[derive(Debug)]
-pub struct WindowBase {
+// TODO: replace Option<Weak<_>> with Weak<_> when `downgraded_weak` is stabilized
+// #[derive(Debug)]
+pub struct Window {
     pub name: String,
     pub creation_data: WindowParams,
 
@@ -16,16 +19,16 @@ pub struct WindowBase {
     pub size: Vec2,
     pub shown: bool,    // TODO: move inside WindowParams?
 
-    pub children: Vec<usize>,
-    pub parent: Option<usize>,
+    pub children: Vec<Rc<Box<RefCell<Window>>>>,
+    pub parent: Option<Weak<Box<RefCell<Window>>>>,
 
     pub vbo_beg: isize,
     pub vbo_end: isize,
 }
 
-impl WindowBase {
-    pub fn new(name: &str, data: WindowParams) -> WindowBase {
-        return WindowBase {
+impl Window {
+    pub fn new(name: &str, data: WindowParams) -> Window {
+        return Window {
             name: String::from(name),
             creation_data: data,
             pos: Vec2::zero(),

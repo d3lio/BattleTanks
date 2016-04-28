@@ -28,10 +28,7 @@
 //! In other words it is a pre-order traversal of the hierarchy tree.
 
 mod window;
-mod single_thread;
-
-pub use self::window::WindowParams;
-pub use self::single_thread::{Overlay, Window};
+pub mod single_thread;
 
 extern crate gl;
 extern crate cgmath;
@@ -42,17 +39,18 @@ use gliw::{
     Vao, Vbo, BufferType, BufferUsagePattern,
     AttribFloatFormat, UniformData,
 };
-use overlay::window::{WindowBase};
+use overlay::window::{Window};
 
-use self::cgmath::{Vector2, Vector3, Vector4, Vector, ApproxEq, Matrix4};
+use self::cgmath::{Matrix4, Vector};
+use std::cell::RefCell;
+use std::rc::Rc;
 use std::mem;
 use std::ptr;
-use std::slice;
 use std::default::Default;
 
-type Vec2 = Vector2<f32>;
-type Vec3 = Vector3<f32>;
-type Vec4 = Vector4<f32>;
+type Vec2 = cgmath::Vector2<f32>;
+type Vec3 = cgmath::Vector3<f32>;
+type Vec4 = cgmath::Vector4<f32>;
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
@@ -69,22 +67,19 @@ impl Default for VertexData {
 }
 
 // TODO: texture
-/// # Guarantees
-/// `arena.len() >= 1` and `arena[0]` is the root window
-struct OverlayBase {
+pub struct Overlay {
     vao: Vao,
     vbo: Vbo,
     prog: Program,
     indices: Vec<u32>,      // TODO: maybe make the indices Vec<u16>
 
-    arena: Vec<WindowBase>,
+    root: Rc<Box<RefCell<Window>>>,
 
-    should_update: Vec<usize>,
     should_reindex: bool,
 }
 
-impl OverlayBase {
-    fn new(width: u32, height: u32) -> OverlayBase {
+impl Overlay {
+    pub fn new(width: u32, height: u32) -> Overlay {
         let vao = Vao::new();
         let vbo = Vbo::new(BufferType::Array);
 
@@ -117,88 +112,10 @@ impl OverlayBase {
 
         unsafe { prog.uniform("proj").value(UniformData::FloatMat(4, false, &mem::transmute::<_, [f32; 16]>(proj_mat))); }
 
-        let mut root = WindowBase::new("", WindowParams {
-            pos: cgmath::vec2(Vec3::zero(), Vec3::zero()),
-            size: cgmath::vec2(cgmath::vec3(0.0, 0.0, width as f32), cgmath::vec3(0.0, 0.0, height as f32)),
-            color: [Vec4::zero(); 4],
-            texcoord: [Vec2::zero(); 4],
-        });
-
-        root.vbo_beg = 0;
-
-        let mut ov = OverlayBase {
-            vao: vao,
-            vbo: vbo,
-            prog: prog,
-            indices: Vec::new(),
-
-            arena: vec![root],
-
-            should_update: vec![ROOT],
-            should_reindex: true,
-        };
-
-        // update vbo and indices
-        ov.update();
-
-        return ov;
+        unimplemented!();
     }
 
-    fn update(&mut self) {
-        if !self.should_reindex && self.should_update.is_empty() {
-            return;
-        }
-
-        if self.should_reindex {
-            self.build_tree(ROOT);
-
-            let vbo_len = 4 * self.window(ROOT).vbo_end as usize;
-
-            let mut vbo_vec = vec![VertexData::default(); vbo_len];
-            let vbo_data = &mut vbo_vec;
-
-            self.update_window(ROOT, vbo_data, true);
-
-            self.vbo.buffer_data(vbo_data, BufferUsagePattern::DynamicDraw);
-
-            let indices_len = 6 * self.window(ROOT).vbo_end as usize;
-
-            self.indices.truncate(indices_len);
-            while self.indices.len() < indices_len {
-                let i = self.indices.len()/6;
-
-                self.indices.push(4*i as u32);
-                self.indices.push(4*i as u32 + 1);
-                self.indices.push(4*i as u32 + 2);
-
-                self.indices.push(4*i as u32);
-                self.indices.push(4*i as u32 + 2);
-                self.indices.push(4*i as u32 + 3);
-            }
-        }
-        else {
-            let vbo_len = 4 * self.window(ROOT).vbo_end as usize;
-            let vbo_data: &mut [VertexData];
-
-            unsafe {
-                self.vbo.bind();
-                let ptr = gl::MapBuffer(self.vbo.buf_type() as u32, gl::WRITE_ONLY);
-                vbo_data = slice::from_raw_parts_mut(ptr as *mut VertexData, vbo_len);
-            }
-
-            for i in 0 .. self.should_update.len() {
-                let window = self.should_update[i];
-                self.update_window(window, vbo_data, false);
-            }
-
-            unsafe { gl::UnmapBuffer(self.vbo.buf_type() as u32); }
-        }
-
-        self.should_update.clear();
-        self.should_reindex = false;
-    }
-
-    fn draw(&self) {
+    pub fn draw(&self) {
         self.vao.bind();
         self.prog.bind();
 
@@ -207,84 +124,118 @@ impl OverlayBase {
         }
     }
 
-    #[inline]
-    fn window(&self, index: usize) -> &WindowBase {
-        &self.arena[index]
-    }
-
-    #[inline]
-    fn window_mut(&mut self, index: usize) -> &mut WindowBase {
-        &mut self.arena[index]
-    }
-
-    fn make_window(&mut self, name: &str, data: WindowParams) -> usize {
-        let next_index = self.arena.len();
-        self.arena.push(WindowBase::new(name, data));
-
-        next_index
-    }
-
-
-    /// Does a recursive pre-order traversal of the window tree and updates the `vbo_beg` and `vbo_end` fields.
-    ///
-    /// Assumes that `window.vbo_beg` is correct - the rest are updated relatively to it.
-    fn build_tree(&mut self, window: usize) {
-        let mut prev_end = self.window(window).vbo_beg + 1;
-
-        for i in 0 .. self.window(window).children.len() {
-            let child = self.window(window).children[i];
-
-            self.window_mut(child).vbo_beg = prev_end;
-            self.build_tree(child);
-            prev_end = self.window(child).vbo_end;
+    fn update(&mut self) {
+        if !self.should_reindex {
+            return;
         }
 
-        self.window_mut(window).vbo_end = prev_end;
+        let len = Self::reindex(self.root.clone()) as usize;
+
+        // update indices array
+        self.indices.truncate(6 * len);
+        for i in self.indices.len()/6 .. len {
+            self.indices.push(4*i as u32);
+            self.indices.push(4*i as u32 + 1);
+            self.indices.push(4*i as u32 + 2);
+
+            self.indices.push(4*i as u32);
+            self.indices.push(4*i as u32 + 2);
+            self.indices.push(4*i as u32 + 3);
+        }
+
+        self.should_reindex = false;
+
+        unsafe {
+            self.vbo.bind();
+            gl::BufferData(self.vbo.buf_type() as u32, (len * mem::size_of::<VertexData>()) as isize,
+                ptr::null(), BufferUsagePattern::DynamicDraw as u32);
+        }
+
+        self.update_subtree(self.root.clone());
     }
 
-
-    fn update_window(&mut self, window_index: usize, vbo_data: &mut [VertexData], full_update: bool) {
-        let new_pos: Vec2;
-        let new_size: Vec2;
+    fn reindex(window: Rc<Box<RefCell<Window>>>) -> isize {
+        let mut prev_end;
         {
-            let window = self.window(window_index);
+            let window = window.borrow();
+            prev_end = window.vbo_beg + 1;
 
-            if window.shown == false {
-                new_pos = Vec2{x: -1.0, y: -1.0};
-                new_size = Vec2{x: 0.0, y: 0.0};
-            }
-            else if let Some(parent_index) = window.parent {
-                let parent = self.window(parent_index);
-
-                new_pos = Vec2 {
-                    x: parent.pos.x + Vec3::dot(window.creation_data.pos.x, cgmath::vec3(parent.size.x, parent.size.y, 1.0)),
-                    y: parent.pos.y + Vec3::dot(window.creation_data.pos.y, cgmath::vec3(parent.size.x, parent.size.y, 1.0)),
-                };
-
-                new_size = Vec2 {
-                    x: Vec3::dot(window.creation_data.size.x, cgmath::vec3(parent.size.x, parent.size.y, 1.0)),
-                    y: Vec3::dot(window.creation_data.size.y, cgmath::vec3(parent.size.x, parent.size.y, 1.0)),
-                };
-            }
-            else {
-                new_pos = Vec2{x: window.creation_data.pos.x.z, y: window.creation_data.pos.y.z};
-                new_size = Vec2{x: window.creation_data.size.x.z, y: window.creation_data.size.y.z};
+            for child in &window.children {
+                child.borrow_mut().vbo_beg = prev_end;
+                prev_end = Self::reindex(child.clone());
             }
         }
 
-        let coord_changed = {
-            let window = self.window(window_index);
-            !window.pos.approx_eq(&new_pos) || !window.size.approx_eq(&new_size)
-        };
+        window.borrow_mut().vbo_end = prev_end;
+        return prev_end;
+    }
 
-        if coord_changed {
-            let window = self.window_mut(window_index);
-            window.pos = new_pos;
-            window.size = new_size;
+    fn update_subtree(&self, window: Rc<Box<RefCell<Window>>>) {
+        if self.should_reindex {
+            return;
         }
 
+        let len;
+        let offset;
         {
-            let window = self.window(window_index);
+            let win = window.borrow();
+            len = (win.vbo_end - win.vbo_beg) as usize;
+            offset = win.vbo_beg as usize;
+        }
+
+        let mut vbo_data = vec![VertexData::default(); 4 * len];
+        helper(window, &mut vbo_data);
+
+        unsafe {
+            self.vbo.bind();
+            gl::BufferSubData(self.vbo.buf_type() as u32, (offset * mem::size_of::<VertexData>()) as isize,
+                (len * mem::size_of::<VertexData>()) as isize, vbo_data.as_ptr() as *const _);
+        }
+
+        fn helper(window: Rc<Box<RefCell<Window>>>, vbo_data: &mut Vec<VertexData>) {
+            let new_pos: Vec2;
+            let new_size: Vec2;
+            {
+                let window = window.borrow();
+
+                if window.shown == false {
+                    new_pos = Vec2{x: -1.0, y: -1.0};
+                    new_size = Vec2{x: 0.0, y: 0.0};
+                }
+                else if let Some(ref parent_weak) = window.parent {
+                    if let Some(parent) = parent_weak.upgrade() {
+                        let parent = parent.borrow();
+
+                        new_pos = Vec2 {
+                            x: parent.pos.x + Vec3::dot(window.creation_data.pos.x, cgmath::vec3(parent.size.x, parent.size.y, 1.0)),
+                            y: parent.pos.y + Vec3::dot(window.creation_data.pos.y, cgmath::vec3(parent.size.x, parent.size.y, 1.0)),
+                        };
+
+                        new_size = Vec2 {
+                            x: Vec3::dot(window.creation_data.size.x, cgmath::vec3(parent.size.x, parent.size.y, 1.0)),
+                            y: Vec3::dot(window.creation_data.size.y, cgmath::vec3(parent.size.x, parent.size.y, 1.0)),
+                        };
+                    }
+                    // TODO: fix code duplication when `downgraded_weak` is stabilized
+                    else {
+                        new_pos = Vec2{x: window.creation_data.pos.x.z, y: window.creation_data.pos.y.z};
+                        new_size = Vec2{x: window.creation_data.size.x.z, y: window.creation_data.size.y.z};
+                    }
+                }
+                else {
+                    new_pos = Vec2{x: window.creation_data.pos.x.z, y: window.creation_data.pos.y.z};
+                    new_size = Vec2{x: window.creation_data.size.x.z, y: window.creation_data.size.y.z};
+                }
+            }
+
+            {
+                let mut window = window.borrow_mut();
+                window.pos = new_pos;
+                window.size = new_size;
+            }
+
+            let window = window.borrow();
+
             vbo_data[4 * window.vbo_beg as usize] = VertexData {
                 pos: window.pos,
                 uv: window.creation_data.texcoord[0],
@@ -305,19 +256,13 @@ impl OverlayBase {
                 uv: window.creation_data.texcoord[2],
                 color: window.creation_data.color[2],
             };
-        }
 
-        if full_update || coord_changed {
-            for i in 0 .. self.window(window_index).children.len() {
-                let child = self.window(window_index).children[i];
-                self.update_window(child, vbo_data, full_update);
+            for child in &window.children {
+                helper(child.clone(), vbo_data);
             }
         }
     }
 }
-
-/// Root window index. Makes the code more readable.
-const ROOT: usize = 0;
 
 const VSHADER: &'static str = r#"
     #version 330 core
