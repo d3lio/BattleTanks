@@ -6,9 +6,9 @@ authors = [
     "Nikola Stoyanov <ns.barzakov@gmail.com>"]
 
 [dependencies]
-gl = "^0.5.0"
-cgmath = "^0.7.0"
+gl = "^0.6.0"
+cgmath = "^0.9.1"
 
 [dependencies.glfw]
-version = "^0.3.0"
+version = "^0.5.0"
 default-features = false

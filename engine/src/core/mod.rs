@@ -9,7 +9,8 @@ mod scene;
 
 pub use self::color::Color;
 
-pub use self::entity::Entity;
+pub use self::entity::{Entity, PropContainer};
+pub use self::entity::component::Component;
 pub use self::entity::cuboid::Cuboid;
 
 pub use self::event_emitter::{Listener, Event, EventEmitter};

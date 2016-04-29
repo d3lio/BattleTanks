@@ -1,10 +1,6 @@
 extern crate cgmath;
 
-use self::cgmath::{
-    Point3, Vector3,
-    Matrix4, SquareMatrix,
-    Angle, Deg,
-};
+use self::cgmath::{Point3, Vector3, Matrix4, SquareMatrix, Deg};
 
 #[derive(Copy, Clone)]
 /// Holds view and projection matrices.

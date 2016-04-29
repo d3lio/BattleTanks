@@ -1,7 +1,10 @@
 extern crate gl;
 extern crate cgmath;
 
-use self::cgmath::{Point, Point3, Vector3, Vector4, Matrix4, Quaternion, Rotation};
+use self::cgmath::{
+    VectorSpace, EuclideanSpace,
+    Point3, Vector3, Vector4, Matrix4, Quaternion
+};
 
 use gliw::{
     Buffer, BufferType, BufferUsagePattern,
@@ -12,10 +15,13 @@ use gliw::{
     VertexAttrib, AttribFloatFormat
 };
 
-use core::{Camera, Renderable, Entity};
+use super::Entity;
+
+use core::{Camera, Renderable};
 
 use math::RotMat;
 
+use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 use std::ptr;
 use std::mem;
@@ -23,13 +29,9 @@ use std::mem;
 /// A general purpose cuboid entity.
 #[allow(dead_code)]
 pub struct Cuboid {
-    center: Point3<f32>,
+    entity: Entity,
     dimensions: Vector3<f32>,
-    orientation: Quaternion<f32>,
-    scale: f32,
-
     color: Vector4<f32>,
-
     priority: u32,
 
     vao: Vao,
@@ -49,7 +51,6 @@ impl Cuboid {
             .unwrap();
 
         let vao = Vao::new();
-        vao.bind();
 
         let vbo = Buffer::from_data(
             &VERTICES,
@@ -67,57 +68,48 @@ impl Cuboid {
         va.enable(&vao);
 
         return Cuboid {
-            center: center,
+            entity: Entity::from(center, Quaternion::zero(), 1.0),
             dimensions: dimensions,
-            orientation: Quaternion::zero(),
-            scale: 1.0,
             color: color,
             priority: 0,
             vao: vao,
             vbo: vbo,
             ebo: ebo,
             program: program
-        }
+        };
+    }
+
+    /// Get a reference to the cuboid's entity.
+    ///
+    /// This method is added for explicity. Consider using the deref.
+    pub fn entity(&self) -> &Entity {
+        return &self.entity;
+    }
+
+    /// Get a mutable reference to the cuboid's entity.
+    ///
+    /// This method is added for explicity. Consider using the deref.
+    pub fn entity_mut(&mut self) -> &mut Entity {
+        return &mut self.entity;
     }
 
     /// Set rendering priority.
     pub fn set_priority(&mut self, priority: u32) {
         self.priority = priority;
     }
+}
 
-    /// Get mutable reference to the cuboid's center.
-    pub fn center(&mut self) -> &mut Point3<f32> {
-        return &mut self.center;
+impl Deref for Cuboid {
+    type Target = Entity;
+
+    fn deref(&self) -> &Entity {
+        return &self.entity;
     }
 }
 
-impl Entity for Cuboid {
-    fn position(&self) -> Point3<f32> {
-        return self.center;
-    }
-
-    fn orientation(&self) -> Quaternion<f32> {
-        return self.orientation;
-    }
-
-    fn scale(&self) -> f32 {
-        return self.scale;
-    }
-
-    fn move_to(&mut self, position: Point3<f32>) {
-        self.center = position;
-    }
-
-    fn look_at(&mut self, dir: Vector3<f32>, up: Vector3<f32>) {
-        self.orientation = Rotation::look_at(dir, up);
-    }
-
-    fn scale_by(&mut self, units: f32) {
-        self.scale *= units;
-    }
-
-    fn scale_to(&mut self, units: f32) {
-        self.scale = units;
+impl DerefMut for Cuboid {
+    fn deref_mut(&mut self) -> &mut Entity {
+        return &mut self.entity;
     }
 }
 
@@ -128,11 +120,11 @@ impl Renderable for Cuboid {
 
     fn model_matrix(&self) -> Matrix4<f32> {
         let scale_matrix = Matrix4::from_nonuniform_scale(
-            self.dimensions.x * self.scale,
-            self.dimensions.y * self.scale,
-            self.dimensions.z * self.scale);
-        let rotation_matrix = Matrix4::from_quat(&self.orientation);
-        let translate_matrix = Matrix4::from_translation(self.center.to_vec());
+            self.dimensions.x * self.entity.scale,
+            self.dimensions.y * self.entity.scale,
+            self.dimensions.z * self.entity.scale);
+        let rotation_matrix = Matrix4::from_quat(&self.entity.orientation);
+        let translate_matrix = Matrix4::from_translation(self.entity.position.to_vec());
 
         return translate_matrix * rotation_matrix * scale_matrix;
     }

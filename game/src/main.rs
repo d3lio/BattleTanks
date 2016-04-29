@@ -4,132 +4,19 @@ extern crate cgmath;
 extern crate glfw;
 extern crate gl;
 
-#[allow(unused_imports)]
-use engine::gliw::{
-    Buffer, BufferType, BufferUsagePattern,
-    Gliw, DepthFunction,
-    Program, ProgramBuilder,
-    Shader, ShaderType,
-    Texture, TextureBuilder2D, ImageType, TextureCoordWrap, TextureFilter,
-    Uniform, UniformData,
-    Vao,
-    VertexAttrib, AttribFloatFormat,
-};
+use engine::gliw::{Gliw, DepthFunction, ProgramBuilder, Shader, ShaderType};
 
-use engine::core::{Entity, Camera, Renderable, Scene, Composition, Cuboid, Color};
+use engine::core::{Camera, Renderable, Scene, Composition, Cuboid, Color};
 
-use cgmath::{Point3, Vector3, Matrix4};
+use cgmath::{Point3, Vector3};
 
 use glfw::{Action, Context, Key};
 
-use std::rc::Rc;
-use std::ptr;
-use std::mem;
+mod simple_plain;
+mod simple_component;
 
-static VERTEX_DATA: [f32; 18] = [
-    -0.5, 1.0, 0.501,
-    -0.5, 0.0, 0.501,
-     0.5, 0.0, 0.501,
-
-    -0.5, 1.0, 0.501,
-     0.5, 0.0, 0.501,
-     0.5, 1.0, 0.501,
-];
-
-static COLOR_DATA: [f32; 12] = [
-    4.0, 4.0,
-    4.0, 0.0,
-    0.0, 0.0,
-
-    4.0, 4.0,
-    0.0, 0.0,
-    0.0, 4.0,
-];
-
-#[allow(dead_code)]
-struct SimpleEntity {
-    vao: Vao,
-    vbos: Vec<Buffer>,
-    program: Rc<Program>,
-    model_matrix: Matrix4<f32>,
-    attribs: Vec<VertexAttrib>,
-    tex: Texture,
-}
-
-impl SimpleEntity {
-    fn new(program: Rc<Program>) -> SimpleEntity {
-        let vao = Vao::new();
-        let mut vbos = Vec::<Buffer>::new();
-
-        vao.bind();
-        vbos.push(
-            Buffer::from_data(
-                &VERTEX_DATA,
-                BufferType::Array,
-                BufferUsagePattern::StaticDraw));
-        vbos.push(
-            Buffer::from_data(
-                &COLOR_DATA,
-                BufferType::Array,
-                BufferUsagePattern::StaticDraw));
-
-        let model_matrix = Matrix4::from_translation(
-            Vector3::<f32>::new(0.0, 0.0, 0.0));
-
-        let mut attribs = Vec::<VertexAttrib>::new();
-        attribs.push(VertexAttrib::new(0));
-        attribs[0].data_float_format(&vao, &vbos[0], AttribFloatFormat::Float(3), 0, ptr::null());
-        attribs.push(VertexAttrib::new(1));
-        attribs[1].data_float_format(&vao, &vbos[1], AttribFloatFormat::Float(2), 0, ptr::null());
-
-        let tex = TextureBuilder2D::new()
-            .source("resources/textures/banana.bmp", ImageType::Bmp)
-            .wrap(TextureCoordWrap::Repeat, TextureCoordWrap::Repeat)
-            .filter(TextureFilter::LinearMipmapLinear, TextureFilter::Linear)
-            .gen_mipmap()
-            .load()
-            .unwrap();
-
-        tex.pass_to(&program, "tex", 0);
-
-        return SimpleEntity {
-            vao: vao,
-            vbos: vbos,
-            program: program,
-            model_matrix: model_matrix,
-            attribs: attribs,
-            tex: tex
-        };
-    }
-}
-
-impl Renderable for SimpleEntity {
-    fn model_matrix(&self) -> Matrix4<f32> {
-        return self.model_matrix;
-    }
-
-    fn draw(&self, draw_space: Matrix4<f32>, camera: &Camera) {
-        self.vao.bind();
-        self.program.bind();
-
-        let mvp_matrix = camera.vp_matrix() * draw_space * self.model_matrix;
-
-        unsafe {
-            Uniform::new(&self.program, "mvp").value(UniformData::FloatMat(4, false,
-                &mem::transmute::<Matrix4<f32>, [f32; 16]>(mvp_matrix)));
-        }
-
-        for attrib in &self.attribs {
-            attrib.enable(&self.vao);
-        }
-
-        unsafe { gl::DrawArrays(gl::TRIANGLES, 0, 6); }
-
-        for attrib in &self.attribs {
-            attrib.disable(&self.vao);
-        }
-    }
-}
+use self::simple_plain::SimplePlain;
+use self::simple_component::SimpleComponent;
 
 fn main() {
     let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
@@ -172,7 +59,7 @@ fn main() {
         .attach_fs(&fs)
         .link()
         .unwrap();
-    let entity = wrap!(SimpleEntity::new(program.clone()));
+    let entity = wrap!(SimplePlain::new(program.clone()));
 
     let cuboid1 = wrap!(Cuboid::new(
         Point3::new(0.0, 0.5, 0.0),
@@ -237,16 +124,25 @@ fn main() {
 
     let animation_speed = 2.0;
     let camera_speed = 0.5;
-    let cuboid3_scale = cuboid3.borrow().scale();
-    let cuboid4_pos_x = cuboid4.borrow().position().x;
+    let cuboid3_scale = cuboid3.borrow().scale;
+    let cuboid4_pos_x = cuboid4.borrow().position.x;
+
+    // Cuboid example for adding components.
+    cuboid1.borrow_mut().add(SimpleComponent::new());
+    cuboid1.borrow_mut().update();
+
+    // Composition example with a Cuboid for a base.
+    // Since Composition has an add method we can't use deref to add a component.
+    cuboid4.borrow_mut().entity_mut().add(SimpleComponent::new());
+    cuboid4.borrow_mut().update();
 
     while !window.should_close() {
         Gliw::clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
 
-        cuboid3.borrow_mut().scale_to(cuboid3_scale +
-            (f64::sin(glfw.get_time() * animation_speed) as f32) * 0.75);
+        cuboid3.borrow_mut().scale = cuboid3_scale +
+            (f64::sin(glfw.get_time() * animation_speed) as f32) * 0.75;
 
-        cuboid4.borrow_mut().center().x = cuboid4_pos_x +
+        cuboid4.borrow_mut().position.x = cuboid4_pos_x +
             f64::sin(glfw.get_time() * animation_speed) as f32;
 
         cuboid6.borrow_mut().look_at(
