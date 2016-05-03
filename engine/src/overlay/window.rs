@@ -52,7 +52,7 @@ pub struct WindowParams {
 
 impl Debug for WindowParams {
     fn fmt(&self, f: &mut Formatter) -> Result<(), fmt::Error> {
-        write!(f, "WindowParams {{ ... }}")
+        write!(f, "WindowParams{{ ... }}")
     }
 }
 

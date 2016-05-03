@@ -39,9 +39,9 @@ use gliw::{
     Vao, Vbo, BufferType, BufferUsagePattern,
     AttribFloatFormat, UniformData,
 };
-use overlay::window::{Window};
+use overlay::window::{Window, WindowParams};
 
-use self::cgmath::{Matrix4, Vector};
+use self::cgmath::{Vector2, Matrix4, Vector};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::mem;
@@ -79,7 +79,7 @@ pub struct Overlay {
 }
 
 impl Overlay {
-    pub fn new(width: u32, height: u32) -> Overlay {
+    fn new(width: u32, height: u32) -> Overlay {
         let vao = Vao::new();
         let vbo = Vbo::new(BufferType::Array);
 
@@ -112,10 +112,28 @@ impl Overlay {
 
         unsafe { prog.uniform("proj").value(UniformData::FloatMat(4, false, &mem::transmute::<_, [f32; 16]>(proj_mat))); }
 
-        unimplemented!();
+        let mut root = Window::new("", WindowParams {
+            pos: Vector2::new(Vec3::zero(), Vec3::zero()),
+            size: Vector2::new(Vec3::new(0.0, 0.0, width as f32), Vec3::new(0.0, 0.0, height as f32)),
+            color: [Vec4::zero(); 4],
+            texcoord: [Vec2::zero(); 4],
+        });
+        root.vbo_beg = 0;
+
+        let mut overlay = Overlay {
+            vao: vao,
+            vbo: vbo,
+            prog: prog,
+            indices: Vec::new(),
+            root: Rc::new(Box::new(RefCell::new(root))),
+            should_reindex: true,
+        };
+
+        overlay.update();
+        return overlay;
     }
 
-    pub fn draw(&self) {
+    fn draw(&self) {
         self.vao.bind();
         self.prog.bind();
 
@@ -129,7 +147,7 @@ impl Overlay {
             return;
         }
 
-        let len = Self::reindex(self.root.clone()) as usize;
+        let len = reindex(self.root.clone()) as usize;
 
         // update indices array
         self.indices.truncate(6 * len);
@@ -152,22 +170,22 @@ impl Overlay {
         }
 
         self.update_subtree(self.root.clone());
-    }
 
-    fn reindex(window: Rc<Box<RefCell<Window>>>) -> isize {
-        let mut prev_end;
-        {
-            let window = window.borrow();
-            prev_end = window.vbo_beg + 1;
+        fn reindex(window: Rc<Box<RefCell<Window>>>) -> isize {
+            let mut prev_end;
+            {
+                let window = window.borrow();
+                prev_end = window.vbo_beg + 1;
 
-            for child in &window.children {
-                child.borrow_mut().vbo_beg = prev_end;
-                prev_end = Self::reindex(child.clone());
+                for child in &window.children {
+                    child.borrow_mut().vbo_beg = prev_end;
+                    prev_end = reindex(child.clone());
+                }
             }
-        }
 
-        window.borrow_mut().vbo_end = prev_end;
-        return prev_end;
+            window.borrow_mut().vbo_end = prev_end;
+            return prev_end;
+        }
     }
 
     fn update_subtree(&self, window: Rc<Box<RefCell<Window>>>) {
@@ -202,25 +220,18 @@ impl Overlay {
                     new_pos = Vec2{x: -1.0, y: -1.0};
                     new_size = Vec2{x: 0.0, y: 0.0};
                 }
-                else if let Some(ref parent_weak) = window.parent {
-                    if let Some(parent) = parent_weak.upgrade() {
-                        let parent = parent.borrow();
+                else if let Some(parent) = unwrap_weak(&window.parent) {
+                    let parent = parent.borrow();
 
-                        new_pos = Vec2 {
-                            x: parent.pos.x + Vec3::dot(window.creation_data.pos.x, cgmath::vec3(parent.size.x, parent.size.y, 1.0)),
-                            y: parent.pos.y + Vec3::dot(window.creation_data.pos.y, cgmath::vec3(parent.size.x, parent.size.y, 1.0)),
-                        };
+                    new_pos = Vec2 {
+                        x: parent.pos.x + Vec3::dot(window.creation_data.pos.x, cgmath::vec3(parent.size.x, parent.size.y, 1.0)),
+                        y: parent.pos.y + Vec3::dot(window.creation_data.pos.y, cgmath::vec3(parent.size.x, parent.size.y, 1.0)),
+                    };
 
-                        new_size = Vec2 {
-                            x: Vec3::dot(window.creation_data.size.x, cgmath::vec3(parent.size.x, parent.size.y, 1.0)),
-                            y: Vec3::dot(window.creation_data.size.y, cgmath::vec3(parent.size.x, parent.size.y, 1.0)),
-                        };
-                    }
-                    // TODO: fix code duplication when `downgraded_weak` is stabilized
-                    else {
-                        new_pos = Vec2{x: window.creation_data.pos.x.z, y: window.creation_data.pos.y.z};
-                        new_size = Vec2{x: window.creation_data.size.x.z, y: window.creation_data.size.y.z};
-                    }
+                    new_size = Vec2 {
+                        x: Vec3::dot(window.creation_data.size.x, cgmath::vec3(parent.size.x, parent.size.y, 1.0)),
+                        y: Vec3::dot(window.creation_data.size.y, cgmath::vec3(parent.size.x, parent.size.y, 1.0)),
+                    };
                 }
                 else {
                     new_pos = Vec2{x: window.creation_data.pos.x.z, y: window.creation_data.pos.y.z};
@@ -261,6 +272,15 @@ impl Overlay {
                 helper(child.clone(), vbo_data);
             }
         }
+    }
+}
+
+// Temporary function until `downgraded_weak` is stabilized
+use std::rc::Weak;
+fn unwrap_weak<T> (val: &Option<Weak<T>>) -> Option<Rc<T>> {
+    match *val {
+        Some(ref weak) => weak.upgrade(),
+        None => None,
     }
 }
 

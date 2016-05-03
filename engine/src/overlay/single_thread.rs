@@ -1,5 +1,6 @@
 use overlay::Overlay;
 use overlay::window::{Window, WindowParams};
+use overlay::unwrap_weak;
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -9,17 +10,26 @@ pub struct OverlayHandle {
 }
 
 impl OverlayHandle {
+    #[inline]
+    pub fn new(width: u32, height: u32) -> OverlayHandle {
+        OverlayHandle {
+            internal: RefCell::new(Overlay::new(width, height)),
+        }
+    }
+
+    #[inline]
     pub fn draw(&self) {
         let mut ovl = self.internal.borrow_mut();
         ovl.update();
         ovl.draw();
     }
 
+    #[inline]
     pub fn root(&self) -> WindowHandle {
-        return WindowHandle {
+        WindowHandle {
             overlay: Some(&self.internal),
             window: self.internal.borrow().root.clone(),
-        };
+        }
     }
 }
 
@@ -29,6 +39,13 @@ pub struct WindowHandle<'a> {
 }
 
 impl<'a> WindowHandle<'a> {
+    pub fn new(name: &str, data: WindowParams) -> WindowHandle {
+        return WindowHandle {
+            overlay: None,
+            window: Rc::new(Box::new(RefCell::new(Window::new(name, data)))),
+        }
+    }
+
     pub fn child(&self, path: &str) -> Option<WindowHandle> {
         let mut next_window = self.window.clone();
         let mut path = path;
@@ -66,16 +83,14 @@ impl<'a> WindowHandle<'a> {
         assert!(child.overlay.is_none());
 
         {
-            let child_window = child.window.borrow();
             let window = self.window.borrow();
+            let child_window = child.window.borrow();
 
-            if let Some(ref parent_weak) = child_window.parent {
-                if let Some(parent) = parent_weak.upgrade() {
-                    panic!(format!("Cannot attach window \"{}\" to \"{}\" because it is already attached to window \"{}\"",
-                        child_window.name,
-                        window.full_path(),
-                        parent.borrow().full_path()));
-                }
+            if let Some(parent) = unwrap_weak(&child_window.parent) {
+                panic!(format!("Cannot attach window \"{}\" to \"{}\" because it is already attached to window \"{}\"",
+                    child_window.name,
+                    window.full_path(),
+                    parent.borrow().full_path()));
             }
 
             if !self.child(&child_window.name).is_none() {
@@ -94,6 +109,36 @@ impl<'a> WindowHandle<'a> {
         }
     }
 
+    pub fn detach(&self, child: &WindowHandle) -> WindowHandle {
+        let mut found = None;
+
+        self.window.borrow_mut().children.retain(|item| {
+            if &***item as *const RefCell<_> != &**child.window as *const RefCell<_> {
+                return true;
+            }
+
+            item.borrow_mut().parent = None;
+            found = Some(item.clone());
+            return false;
+        });
+
+        match found {
+            Some(rc) => {
+                if let Some(ovl) = self.overlay {
+                    ovl.borrow_mut().should_reindex = true;
+                }
+
+                return WindowHandle {
+                    overlay: None,
+                    window: rc
+                };
+            },
+            None => panic!(format!("Cannot detach window \"{}\" from \"{}\" because the first is not attached to the second",
+                self.window.borrow().full_path(),
+                child.window.borrow().full_path())),
+        };
+    }
+
     pub fn modify<F> (&self, modfn: F)
         where F: Fn(&mut WindowParams)
     {
@@ -107,6 +152,9 @@ impl<'a> WindowHandle<'a> {
 
 impl Window {
     fn full_path(&self) -> String {
-        String::from("")
+        match unwrap_weak(&self.parent) {
+            Some(parent) => parent.borrow().full_path() + "." + &self.name,
+            None => self.name.clone()
+        }
     }
 }
