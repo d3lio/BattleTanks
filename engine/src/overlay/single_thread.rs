@@ -79,8 +79,8 @@ impl<'a> WindowHandle<'a> {
         }
     }
 
-    pub fn attach<'b> (&'b self, child: &mut WindowHandle<'b>) {
-        assert!(child.overlay.is_none());
+    pub fn attach(&self, child: WindowHandle) -> WindowHandle<'a> {
+        assert!(child.overlay.is_none(), "");
 
         {
             let window = self.window.borrow();
@@ -102,42 +102,52 @@ impl<'a> WindowHandle<'a> {
 
         self.window.borrow_mut().children.push(child.window.clone());
         child.window.borrow_mut().parent = Some(Rc::downgrade(&self.window));
-        child.overlay = self.overlay;
 
         if let Some(ovl) = self.overlay {
             ovl.borrow_mut().should_reindex = true;
         }
-    }
 
-    pub fn detach(&self, child: &WindowHandle) -> WindowHandle {
-        let mut found = None;
-
-        self.window.borrow_mut().children.retain(|item| {
-            if &***item as *const RefCell<_> != &**child.window as *const RefCell<_> {
-                return true;
-            }
-
-            item.borrow_mut().parent = None;
-            found = Some(item.clone());
-            return false;
-        });
-
-        match found {
-            Some(rc) => {
-                if let Some(ovl) = self.overlay {
-                    ovl.borrow_mut().should_reindex = true;
-                }
-
-                return WindowHandle {
-                    overlay: None,
-                    window: rc
-                };
-            },
-            None => panic!(format!("Cannot detach window \"{}\" from \"{}\" because the first is not attached to the second",
-                self.window.borrow().full_path(),
-                child.window.borrow().full_path())),
+        return WindowHandle {
+            overlay: self.overlay,
+            window: child.window,
         };
     }
+
+    pub fn detach(self) -> WindowHandle<'static> {
+        let parent: Rc<Box<RefCell<Window>>>;
+        {
+            let parent_opt = unwrap_weak(&self.window.borrow().parent);
+            match parent_opt {
+                Some(p) => parent = p,
+                None => {
+                    match self.overlay {
+                        None => return WindowHandle {
+                            overlay: None,
+                            window: self.window,
+                        },
+                        Some(_) => panic!("Cannot detach a root window"),
+                    }
+                },
+            };
+        }
+
+        self.window.borrow_mut().parent = None;
+        parent.borrow_mut().children.retain(|item| {
+            &***item as *const RefCell<_> != &**self.window as *const RefCell<_> });
+
+        if let Some(ovl) = self.overlay {
+            ovl.borrow_mut().should_reindex = true;
+        }
+
+        return WindowHandle {
+            overlay: None,
+            window: self.window,
+        };
+    }
+
+    // TODO: implement
+    // pub fn detach_child(&self, path: &str) -> WindowHandle<'static> {
+    // }
 
     pub fn modify<F> (&self, modfn: F)
         where F: Fn(&mut WindowParams)

@@ -20,7 +20,7 @@ use engine::core::{
     Scene
 };
 
-// use engine::overlay::{Overlay, WindowParams};
+use engine::overlay::{OverlayHandle, WindowHandle, WindowParams};
 
 use cgmath::{
     Matrix4,
@@ -199,46 +199,46 @@ fn main() {
     let mut scene = Scene::new();
     scene.add(entity.clone());
 
-    // let ov = Overlay::new(800, 600);
-    // let wnd3 = ov.make_window("inner", WindowParams {
-    //     pos: Vector2{x: cgmath::vec3(0.0, 0.0, 10.0), y: cgmath::vec3(0.0, 0.1, 0.0)},
-    //     size: Vector2{x: cgmath::vec3(1.0, 0.0, -20.0), y: cgmath::vec3(0.0, 0.0, 40.0)},
-    //     color: [cgmath::vec4(1.0, 1.0, 1.0, 1.0); 4],
-    //     texcoord: [Vector2::zero(); 4]
-    // });
-    // let wnd1 = ov.make_window("wnd1", WindowParams {
-    //     pos: Vector2{x: Vector3::zero(), y: Vector3::zero()},
-    //     size: Vector2{x: cgmath::vec3(0.2, 0.0, 0.0), y: cgmath::vec3(0.0, 1.0, 0.0)},
-    //     color: [cgmath::vec4(0.8, 0.8, 0.5, 0.6); 4],
-    //     texcoord: [Vector2::zero(); 4],
-    // });
-    // let wnd2 = ov.make_window("wnd2", WindowParams {
-    //     pos: Vector2{x: cgmath::vec3(0.2, 0.0, 10.0), y: Vector3::zero()},
-    //     size: Vector2{x: cgmath::vec3(0.2, 0.0, -10.0), y: cgmath::vec3(0.0, 1.0, 0.0)},
-    //     color: [cgmath::vec4(1.0, 0.5, 0.5, 0.9); 4],
-    //     texcoord: [Vector2::zero(); 4],
-    // });
+    let ov = OverlayHandle::new(800, 600);
+    let wnd3 = WindowHandle::new("inner", WindowParams {
+        pos: Vector2{x: cgmath::vec3(0.0, 0.0, 10.0), y: cgmath::vec3(0.0, 0.1, 0.0)},
+        size: Vector2{x: cgmath::vec3(1.0, 0.0, -20.0), y: cgmath::vec3(0.0, 0.0, 40.0)},
+        color: [cgmath::vec4(1.0, 1.0, 1.0, 1.0); 4],
+        texcoord: [Vector2::zero(); 4]
+    });
+    let wnd1 = WindowHandle::new("wnd1", WindowParams {
+        pos: Vector2{x: Vector3::zero(), y: Vector3::zero()},
+        size: Vector2{x: cgmath::vec3(0.2, 0.0, 0.0), y: cgmath::vec3(0.0, 1.0, 0.0)},
+        color: [cgmath::vec4(0.8, 0.8, 0.5, 0.6); 4],
+        texcoord: [Vector2::zero(); 4],
+    });
+    let wnd2 = WindowHandle::new("wnd2", WindowParams {
+        pos: Vector2{x: cgmath::vec3(0.2, 0.0, 10.0), y: Vector3::zero()},
+        size: Vector2{x: cgmath::vec3(0.2, 0.0, -10.0), y: cgmath::vec3(0.0, 1.0, 0.0)},
+        color: [cgmath::vec4(1.0, 0.5, 0.5, 0.9); 4],
+        texcoord: [Vector2::zero(); 4],
+    });
 
-    // ov.root().attach_child(&wnd1);
-    // ov.root().attach_child(&wnd2);
-    // wnd1.attach_child(&wnd3);
+    let wnd1 = ov.root().attach(wnd1);
+    let wnd2 = ov.root().attach(wnd2);
+    wnd1.attach(wnd3);
 
-    // wnd1.detach_child(&wnd1.child("inner").unwrap());
-    // wnd2.attach_child(&wnd3);
+    let wnd3 = wnd1.child("inner").unwrap().detach();
+    wnd2.attach(wnd3);
 
     while !window.should_close() {
         let t = glfw.get_time();
 
-        // wnd2.modify(|params| {
-        //     params.size.x = cgmath::vec3(0.4 + 0.2*f32::sin(t as f32), 0.0, -10.0);
-        //     params.color[0] = cgmath::vec4(0.75 - 0.25*f32::sin(t as f32), 0.2, 0.2, 0.9);
-        //     params.color[1] = cgmath::vec4(1.0, 0.5 + 0.25*f32::sin(t as f32), 0.2, 0.9);
-        // });
+        wnd2.modify(|params| {
+            params.size.x = cgmath::vec3(0.4 + 0.2*f32::sin(t as f32), 0.0, -10.0);
+            params.color[0] = cgmath::vec4(0.75 - 0.25*f32::sin(t as f32), 0.2, 0.2, 0.9);
+            params.color[1] = cgmath::vec4(1.0, 0.5 + 0.25*f32::sin(t as f32), 0.2, 0.9);
+        });
 
         Gliw::clear(gl::COLOR_BUFFER_BIT);
 
         scene.draw();
-        // ov.draw();
+        ov.draw();
 
         window.swap_buffers();
 

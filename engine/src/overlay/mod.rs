@@ -28,7 +28,10 @@
 //! In other words it is a pre-order traversal of the hierarchy tree.
 
 mod window;
-pub mod single_thread;
+mod single_thread;
+
+pub use self::single_thread::{OverlayHandle, WindowHandle};
+pub use self::window::WindowParams;
 
 extern crate gl;
 extern crate cgmath;
@@ -39,7 +42,7 @@ use gliw::{
     Vao, Vbo, BufferType, BufferUsagePattern,
     AttribFloatFormat, UniformData,
 };
-use overlay::window::{Window, WindowParams};
+use overlay::window::Window;
 
 use self::cgmath::{Vector2, Matrix4, Vector};
 use std::cell::RefCell;
@@ -165,7 +168,7 @@ impl Overlay {
 
         unsafe {
             self.vbo.bind();
-            gl::BufferData(self.vbo.buf_type() as u32, (len * mem::size_of::<VertexData>()) as isize,
+            gl::BufferData(self.vbo.buf_type() as u32, (4 * len * mem::size_of::<VertexData>()) as isize,
                 ptr::null(), BufferUsagePattern::DynamicDraw as u32);
         }
 
@@ -202,15 +205,17 @@ impl Overlay {
         }
 
         let mut vbo_data = vec![VertexData::default(); 4 * len];
-        helper(window, &mut vbo_data);
+        helper(window, &mut vbo_data, 4 * offset);
+
+        // println!("{:#?}", vbo_data);
 
         unsafe {
             self.vbo.bind();
-            gl::BufferSubData(self.vbo.buf_type() as u32, (offset * mem::size_of::<VertexData>()) as isize,
-                (len * mem::size_of::<VertexData>()) as isize, vbo_data.as_ptr() as *const _);
+            gl::BufferSubData(self.vbo.buf_type() as u32, (4 * offset * mem::size_of::<VertexData>()) as isize,
+                (4 * len * mem::size_of::<VertexData>()) as isize, vbo_data.as_ptr() as *const _);
         }
 
-        fn helper(window: Rc<Box<RefCell<Window>>>, vbo_data: &mut Vec<VertexData>) {
+        fn helper(window: Rc<Box<RefCell<Window>>>, vbo_data: &mut Vec<VertexData>, offset: usize) {
             let new_pos: Vec2;
             let new_size: Vec2;
             {
@@ -247,29 +252,29 @@ impl Overlay {
 
             let window = window.borrow();
 
-            vbo_data[4 * window.vbo_beg as usize] = VertexData {
+            vbo_data[4 * window.vbo_beg as usize - offset] = VertexData {
                 pos: window.pos,
                 uv: window.creation_data.texcoord[0],
                 color: window.creation_data.color[0],
             };
-            vbo_data[4 * window.vbo_beg as usize + 1] = VertexData {
+            vbo_data[4 * window.vbo_beg as usize + 1 - offset] = VertexData {
                 pos: window.pos + cgmath::vec2(window.size.x, 0.0),
                 uv: window.creation_data.texcoord[1],
                 color: window.creation_data.color[1],
             };
-            vbo_data[4 * window.vbo_beg as usize + 2] = VertexData {
+            vbo_data[4 * window.vbo_beg as usize + 2 - offset] = VertexData {
                 pos: window.pos + window.size,
                 uv: window.creation_data.texcoord[3],
                 color: window.creation_data.color[3],
             };
-            vbo_data[4 * window.vbo_beg as usize + 3] = VertexData {
+            vbo_data[4 * window.vbo_beg as usize + 3 - offset] = VertexData {
                 pos: window.pos + cgmath::vec2(0.0, window.size.y),
                 uv: window.creation_data.texcoord[2],
                 color: window.creation_data.color[2],
             };
 
             for child in &window.children {
-                helper(child.clone(), vbo_data);
+                helper(child.clone(), vbo_data, offset);
             }
         }
     }
