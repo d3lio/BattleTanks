@@ -8,40 +8,43 @@ use self::cgmath::{
     Point3, Vector3, Quaternion
 };
 
-use core::{Event, EventEmitter};
+use core::{Data, Event, EventEmitter};
 
 use self::component::Component;
 
 use std::any::Any;
 use std::cell::RefCell;
-use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
-
-// TODO: implement Renderable
 
 /// Holds common virtual world object's properties and components.
 pub struct Entity {
-    prop_container: PropContainer,
-    components: Vec<Rc<Any>>,
-    emitter: EventEmitter<Any, PropContainer>
+    pub position: Point3<f32>,
+    pub orientation: Quaternion<f32>,
+    pub scale: f32,
+    pub emitter: EventEmitter<Any>,
+    components: Vec<Rc<Any>>
 }
 
 impl Entity {
     /// Create a new entity.
     pub fn new() -> Entity {
         return Entity {
-            prop_container: PropContainer::new(),
-            components: Vec::new(),
-            emitter: EventEmitter::new()
+            position: Point3::new(0.0, 0.0, 0.0),
+            orientation: Quaternion::zero(),
+            scale: 1.0,
+            emitter: EventEmitter::new(),
+            components: Vec::new()
         };
     }
 
     /// Create a new entity from properties.
     pub fn from(position: Point3<f32>, orientation: Quaternion<f32>, scale: f32) -> Entity {
         return Entity {
-            prop_container: PropContainer::from(position, orientation, scale),
-            components: Vec::new(),
-            emitter: EventEmitter::new()
+            position: position,
+            orientation: orientation,
+            scale: scale,
+            emitter: EventEmitter::new(),
+            components: Vec::new()
         };
     }
 
@@ -67,10 +70,7 @@ impl Entity {
         if let None = self.component::<T>() {
             let wrapped = wrap!(component);
 
-            wrapped.borrow_mut().subscribe(
-                Rc::downgrade(&wrapped),
-                &self.prop_container,
-                &mut self.emitter);
+            wrapped.borrow_mut().subscribe(Rc::downgrade(&wrapped), self);
 
             self.components.push(wrapped);
 
@@ -91,56 +91,16 @@ impl Entity {
         return None
     }
 
-    /// Emit an event.
+    /// Emit an event with some data.
     #[inline]
-    pub fn emit(&mut self, event: Event) {
-        self.emitter.emit(event, &mut self.prop_container);
+    pub fn emit(&mut self, event: Event, data: Data) {
+        self.emitter.emit(event, data);
     }
 
-    /// Update the entity by emitting an `"update"` event.
+    /// Emit an `update` event with the entity itself as data.
     #[inline]
     pub fn update(&mut self) {
-        self.emit(Event("update"));
-    }
-}
-
-impl Deref for Entity {
-    type Target = PropContainer;
-
-    fn deref(&self) -> &PropContainer {
-        &self.prop_container
-    }
-}
-
-impl DerefMut for Entity {
-    fn deref_mut(&mut self) -> &mut PropContainer {
-        &mut self.prop_container
-    }
-}
-
-/// Holds common entity properties.
-pub struct PropContainer {
-    pub position: Point3<f32>,
-    pub orientation: Quaternion<f32>,
-    pub scale: f32
-}
-
-impl PropContainer {
-    /// Create a new prop container.
-    pub fn new() -> PropContainer {
-        return PropContainer {
-            position: Point3::new(0.0, 0.0, 0.0),
-            orientation: Quaternion::zero(),
-            scale: 1.0
-        };
-    }
-
-    /// Create a new prop container with values.
-    pub fn from(position: Point3<f32>, orientation: Quaternion<f32>, scale: f32) -> PropContainer {
-        return PropContainer {
-            position: position,
-            orientation: orientation,
-            scale: scale
-        };
+        let data = Data::from(self);
+        self.emit(Event("update"), data);
     }
 }

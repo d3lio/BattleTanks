@@ -16,7 +16,7 @@ use std::ops::{Deref, DerefMut};
 /// This structure provides a way to render relative objects.
 /// It's a wrapper for any `Renderable` and has a `NodeContainer` for child objects.
 /// What this means is you can use the composition just like you would use the object it wraps
-/// thanks to the derefs, with the minor difference that it has an `add` function
+/// thanks to the derefs, with the minor difference that it has an `attach` function
 /// to hook objects together.
 ///
 /// Since the `Composition` is a `Renderable` itself we come across its most powerful
@@ -37,10 +37,10 @@ impl<T: Renderable> Composition<T> {
         };
     }
 
-    /// Adds a relative `Renderable` object.
+    /// Attaches a relative `Renderable` object.
     ///
     /// See `Scene.add` for more info.
-    pub fn add<R>(&mut self, renderable: Weak<RefCell<R>>) -> &mut Self
+    pub fn attach<R>(&mut self, renderable: Weak<RefCell<R>>) -> &mut Self
         where R: Renderable + 'static
     {
         self.children.borrow_mut().add(renderable);

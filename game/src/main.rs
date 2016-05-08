@@ -6,7 +6,7 @@ extern crate gl;
 
 use engine::gliw::{Gliw, DepthFunction, ProgramBuilder, Shader, ShaderType};
 
-use engine::core::{Camera, Renderable, Scene, Composition, Cuboid, Color};
+use engine::core::{Camera, Renderable, Scene, Composition, Cuboid, Color, Entity, Event, Data};
 
 use cgmath::{Point3, Vector3};
 
@@ -16,7 +16,7 @@ mod simple_plain;
 mod simple_component;
 
 use self::simple_plain::SimplePlain;
-use self::simple_component::SimpleComponent;
+use self::simple_component::AntiClockwiseRotation;
 
 fn main() {
     let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
@@ -91,8 +91,8 @@ fn main() {
         Vector3::new(0.5, 0.5, 0.5),
         Color::from_rgba(0, 204, 102, 255)));
 
-    cuboid4.borrow_mut().add(Scene::node(&cuboid4_child_comp));
-    cuboid4_child_comp.borrow_mut().add(Scene::node(&cuboid4_child_comp_child));
+    cuboid4.borrow_mut().attach(Scene::node(&cuboid4_child_comp));
+    cuboid4_child_comp.borrow_mut().attach(Scene::node(&cuboid4_child_comp_child));
 
     let cuboid5 = wrap!(Cuboid::new(
         Point3::new(-1.0, 0.5, -1.0),
@@ -127,14 +127,7 @@ fn main() {
     let cuboid3_scale = cuboid3.borrow().scale;
     let cuboid4_pos_x = cuboid4.borrow().position.x;
 
-    // Cuboid example for adding components.
-    cuboid1.borrow_mut().add(SimpleComponent::new());
-    cuboid1.borrow_mut().update();
-
-    // Composition example with a Cuboid for a base.
-    // Since Composition has an add method we can't use deref to add a component.
-    cuboid4.borrow_mut().entity_mut().add(SimpleComponent::new());
-    cuboid4.borrow_mut().update();
+    cuboid6.borrow_mut().add(AntiClockwiseRotation::new(animation_speed));
 
     while !window.should_close() {
         Gliw::clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
@@ -145,13 +138,12 @@ fn main() {
         cuboid4.borrow_mut().position.x = cuboid4_pos_x +
             f64::sin(glfw.get_time() * animation_speed) as f32;
 
-        cuboid6.borrow_mut().look_at(
-            Vector3::new(
-                f64::cos(glfw.get_time() * animation_speed) as f32,
-                0.0,
-                f64::sin(glfw.get_time() * animation_speed) as f32),
-            Vector3::new(0.0, 1.0, 0.0));
+        // Trigger the AntiClockwiseRotation component
+        let cuboid6_ent = cuboid6.borrow_mut().entity_mut() as *mut Entity;
+        cuboid6.borrow_mut().emit(Event("rotate"),
+            Data::from(&mut (cuboid6_ent, glfw.get_time())));
 
+        // Clockwise rotation
         cuboid4_child_comp.borrow_mut().look_at(
             Vector3::new(
                 f64::sin(glfw.get_time() * animation_speed) as f32,

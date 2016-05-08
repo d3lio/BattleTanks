@@ -35,8 +35,8 @@ pub struct Cuboid {
     priority: u32,
 
     vao: Vao,
-    vbo: Buffer,    // FIXME: should be static
-    ebo: Buffer,    // FIXME: should be static
+    vbo: Buffer,            // FIXME: should be static
+    ebo: Buffer,            // FIXME: should be static
     program: Rc<Program>
 }
 
@@ -64,7 +64,6 @@ impl Cuboid {
 
         let va = VertexAttrib::new(0);
         va.data_float_format(&vao, &vbo, AttribFloatFormat::Float(3), 0, ptr::null());
-
         va.enable(&vao);
 
         return Cuboid {

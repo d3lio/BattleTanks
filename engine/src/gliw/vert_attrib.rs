@@ -114,9 +114,9 @@ impl VertexAttrib {
     ///
     /// # Panics
     ///
-    /// * Panics if `stride < 0`. <br>
-    /// * Panics if `size` of `format` is not between 1 and 4. <br>
-    /// * Panics if the attribute hande is greater than or equal to `GL_MAX_VERTEX_ATTRIBS`. <br>
+    /// * Panics if `stride < 0`.
+    /// * Panics if `size` of `format` is not between 1 and 4.
+    /// * Panics if the attribute hande is greater than or equal to `GL_MAX_VERTEX_ATTRIBS`.
     pub fn data_float_format(&self, vao: &Vao, vbo: &Buffer, format: AttribFloatFormat, stride: i32, offset: *const c_void) {
         if stride < 0 {
             panic!(NEGATIVE_STRIDE);
