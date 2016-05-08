@@ -86,6 +86,7 @@ impl Overlay {
         let vao = Vao::new();
         let vbo = Vbo::new(BufferType::Array);
 
+        // TODO: should I print a more helpfull error message
         let vs = Shader::new(ShaderType::Vertex, VSHADER).unwrap();
         let fs = Shader::new(ShaderType::Fragment, FSHADER).unwrap();
 

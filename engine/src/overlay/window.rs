@@ -56,3 +56,13 @@ impl Debug for WindowParams {
     }
 }
 
+impl Default for WindowParams {
+    fn default() -> WindowParams {
+        WindowParams {
+            pos: Vector2{x: Vector3::zero(), y: Vector3::zero()},
+            size: Vector2{x: Vector3::new(1.0, 0.0, 0.0), y: Vector3::new(0.0, 1.0, 0.0)},
+            color: [Vector4::zero(); 4],
+            texcoord: [Vector2::new(-1.0, -1.0); 4],
+        }
+    }
+}

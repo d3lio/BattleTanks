@@ -201,21 +201,21 @@ fn main() {
 
     let ov = OverlayHandle::new(800, 600);
     let wnd3 = WindowHandle::new("inner", WindowParams {
-        pos: Vector2{x: cgmath::vec3(0.0, 0.0, 10.0), y: cgmath::vec3(0.0, 0.1, 0.0)},
-        size: Vector2{x: cgmath::vec3(1.0, 0.0, -20.0), y: cgmath::vec3(0.0, 0.0, 40.0)},
-        color: [cgmath::vec4(1.0, 1.0, 1.0, 1.0); 4],
+        pos: Vector2{x: Vector3::new(0.0, 0.0, 10.0), y: Vector3::new(0.0, 0.1, 0.0)},
+        size: Vector2{x: Vector3::new(1.0, 0.0, -20.0), y: Vector3::new(0.0, 0.0, 40.0)},
+        color: [Vector4::new(1.0, 1.0, 1.0, 1.0); 4],
         texcoord: [Vector2::zero(); 4]
     });
     let wnd1 = WindowHandle::new("wnd1", WindowParams {
         pos: Vector2{x: Vector3::zero(), y: Vector3::zero()},
-        size: Vector2{x: cgmath::vec3(0.2, 0.0, 0.0), y: cgmath::vec3(0.0, 1.0, 0.0)},
-        color: [cgmath::vec4(0.8, 0.8, 0.5, 0.6); 4],
+        size: Vector2{x: Vector3::new(0.2, 0.0, 0.0), y: Vector3::new(0.0, 1.0, 0.0)},
+        color: [Vector4::new(0.8, 0.8, 0.5, 0.6); 4],
         texcoord: [Vector2::zero(); 4],
     });
     let wnd2 = WindowHandle::new("wnd2", WindowParams {
-        pos: Vector2{x: cgmath::vec3(0.2, 0.0, 10.0), y: Vector3::zero()},
-        size: Vector2{x: cgmath::vec3(0.2, 0.0, -10.0), y: cgmath::vec3(0.0, 1.0, 0.0)},
-        color: [cgmath::vec4(1.0, 0.5, 0.5, 0.9); 4],
+        pos: Vector2{x: Vector3::new(0.2, 0.0, 10.0), y: Vector3::zero()},
+        size: Vector2{x: Vector3::new(0.2, 0.0, -10.0), y: Vector3::new(0.0, 1.0, 0.0)},
+        color: [Vector4::new(1.0, 0.5, 0.5, 0.9); 4],
         texcoord: [Vector2::zero(); 4],
     });
 
@@ -230,9 +230,9 @@ fn main() {
         let t = glfw.get_time();
 
         wnd2.modify(|params| {
-            params.size.x = cgmath::vec3(0.4 + 0.2*f32::sin(t as f32), 0.0, -10.0);
-            params.color[0] = cgmath::vec4(0.75 - 0.25*f32::sin(t as f32), 0.2, 0.2, 0.9);
-            params.color[1] = cgmath::vec4(1.0, 0.5 + 0.25*f32::sin(t as f32), 0.2, 0.9);
+            params.size.x = Vector3::new(0.4 + 0.2*f32::sin(t as f32), 0.0, -10.0);
+            params.color[0] = Vector4::new(0.75 - 0.25*f32::sin(t as f32), 0.2, 0.2, 0.9);
+            params.color[1] = Vector4::new(1.0, 0.5 + 0.25*f32::sin(t as f32), 0.2, 0.9);
         });
 
         Gliw::clear(gl::COLOR_BUFFER_BIT);

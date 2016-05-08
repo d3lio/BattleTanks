@@ -33,6 +33,8 @@ impl OverlayHandle {
     }
 }
 
+// TODO: there could be a problem if I get two handles to the same window
+// and change it trough one of them. The second will be invalid but won't know that!
 pub struct WindowHandle<'a> {
     overlay: Option<&'a RefCell<Overlay>>,
     window: Rc<Box<RefCell<Window>>>,
@@ -57,6 +59,7 @@ impl<'a> WindowHandle<'a> {
             match path.find('.') {
                 Some(seperator_pos) => {
                     let (curr_name, rest_path) = path.split_at(seperator_pos);
+                    let rest_path = &rest_path[1..];
 
                     for child in &window.children {
                         if child.borrow().name == curr_name {
@@ -157,6 +160,10 @@ impl<'a> WindowHandle<'a> {
         if let Some(ovl) = self.overlay {
             ovl.borrow().update_subtree(self.window.clone());
         }
+    }
+
+    pub fn same<'b> (&self, other: &WindowHandle<'b>) -> bool {
+        &**self.window as *const RefCell<_> == &**other.window as *const RefCell<_>
     }
 }
 
