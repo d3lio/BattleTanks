@@ -10,6 +10,7 @@ pub struct OverlayHandle {
 }
 
 impl OverlayHandle {
+    /// Create a new Overlay.
     #[inline]
     pub fn new(width: u32, height: u32) -> OverlayHandle {
         OverlayHandle {
@@ -17,6 +18,9 @@ impl OverlayHandle {
         }
     }
 
+    /// Render the overlay windows.
+    ///
+    /// In order to render correctly depth testing must be disabled and alpha blending enabled.
     #[inline]
     pub fn draw(&self) {
         let mut ovl = self.internal.borrow_mut();
@@ -24,6 +28,7 @@ impl OverlayHandle {
         ovl.draw();
     }
 
+    /// Get handle to the root window of the overlay.
     #[inline]
     pub fn root(&self) -> WindowHandle {
         WindowHandle {
@@ -48,7 +53,7 @@ impl<'a> WindowHandle<'a> {
         }
     }
 
-    pub fn child(&self, path: &str) -> Option<WindowHandle> {
+    pub fn child<'b> (&'b self, path: &str) -> Option<WindowHandle<'b>> {
         let mut next_window = self.window.clone();
         let mut path = path;
 
@@ -83,7 +88,7 @@ impl<'a> WindowHandle<'a> {
     }
 
     pub fn attach(&self, child: WindowHandle) -> WindowHandle<'a> {
-        assert!(child.overlay.is_none(), "");
+        assert!(child.overlay.is_none(), "child overlay is not none");
 
         {
             let window = self.window.borrow();
@@ -163,7 +168,7 @@ impl<'a> WindowHandle<'a> {
     }
 
     pub fn same<'b> (&self, other: &WindowHandle<'b>) -> bool {
-        &**self.window as *const RefCell<_> == &**other.window as *const RefCell<_>
+        &*self.window as *const Box<_> == &*other.window as *const Box<_>
     }
 }
 
