@@ -12,6 +12,8 @@ use cgmath::{Point3, Vector3};
 
 use glfw::{Action, Context, Key};
 
+use std::ops::DerefMut;
+
 mod simple_plain;
 mod simple_component;
 
@@ -139,7 +141,7 @@ fn main() {
             f64::sin(glfw.get_time() * animation_speed) as f32;
 
         // Trigger the AntiClockwiseRotation component
-        let cuboid6_ent = cuboid6.borrow_mut().entity_mut() as *mut Entity;
+        let cuboid6_ent = (*cuboid6.borrow_mut()).deref_mut() as *mut Entity;
         cuboid6.borrow_mut().emit(Event("rotate"),
             Data::from(&mut (cuboid6_ent, glfw.get_time())));
 

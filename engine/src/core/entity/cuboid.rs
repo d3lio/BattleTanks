@@ -78,20 +78,6 @@ impl Cuboid {
         };
     }
 
-    /// Get a reference to the cuboid's entity.
-    ///
-    /// This method is added for explicity. Consider using the deref.
-    pub fn entity(&self) -> &Entity {
-        return &self.entity;
-    }
-
-    /// Get a mutable reference to the cuboid's entity.
-    ///
-    /// This method is added for explicity. Consider using the deref.
-    pub fn entity_mut(&mut self) -> &mut Entity {
-        return &mut self.entity;
-    }
-
     /// Set rendering priority.
     pub fn set_priority(&mut self, priority: u32) {
         self.priority = priority;

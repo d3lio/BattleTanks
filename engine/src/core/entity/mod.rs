@@ -8,7 +8,7 @@ use self::cgmath::{
     Point3, Vector3, Quaternion
 };
 
-use core::{Data, Event, EventEmitter};
+use core::{Data, Event, EventEmitter, Listener};
 
 use self::component::Component;
 
@@ -64,20 +64,37 @@ impl Entity {
 
     /// Add a component to the entity.
     ///
-    /// Returns true if the component is unique for the entity.
-    /// Any non unique components will be ignored and false will be returned.
-    pub fn add<T: Any + Component>(&mut self, component: T) -> bool {
+    /// Returns `Some` if the component is unique for the entity.
+    /// Any non unique components will be ignored and `None` will be returned.
+    pub fn add<T: Any + Component>(&mut self, component: T) -> Option<Rc<RefCell<T>>> {
         if let None = self.component::<T>() {
+            // Wrap the component.
             let wrapped = wrap!(component);
 
-            wrapped.borrow_mut().subscribe(Rc::downgrade(&wrapped), self);
+            // Create a weak from the wrapper to clone later.
+            let weak = Rc::downgrade(&wrapped);
 
-            self.components.push(wrapped);
+            // Call the component's subscribe method with self injection.
+            let pairs = wrapped.borrow_mut().subscribe(self);
 
-            return true;
+            // Go through the pairs.
+            for (events, closure) in pairs.into_iter() {
+                // Create a listener from each closure.
+                let listener = Listener::<Any>::new(weak.clone(), closure);
+                // Go through the events that the listener wants to listen for.
+                for event in events.into_iter() {
+                    // Subscribe the listener to each of those events.
+                    self.emitter.on(event, listener.clone());
+                }
+            }
+
+            // Finally take in the wrapped component.
+            self.components.push(wrapped.clone());
+
+            return Some(wrapped);
         }
 
-        return false;
+        return None;
     }
 
     /// Get a component by type.
