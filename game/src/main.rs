@@ -1,4 +1,4 @@
-#[macro_use(wrap)]
+#[macro_use(wrap, events)]
 extern crate engine;
 extern crate cgmath;
 extern crate glfw;

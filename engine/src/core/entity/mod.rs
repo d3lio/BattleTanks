@@ -8,12 +8,13 @@ use self::cgmath::{
     Point3, Vector3, Quaternion
 };
 
-use core::{Data, Event, EventEmitter, Listener};
+use core::{Data, EventEmitter, Listener};
 
 use self::component::Component;
 
 use std::any::Any;
 use std::cell::RefCell;
+use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 
 /// Holds common virtual world object's properties and components.
@@ -21,20 +22,14 @@ pub struct Entity {
     pub position: Point3<f32>,
     pub orientation: Quaternion<f32>,
     pub scale: f32,
-    pub emitter: EventEmitter<Any>,
+    emitter: EventEmitter<Any>,
     components: Vec<Rc<Any>>
 }
 
 impl Entity {
     /// Create a new entity.
     pub fn new() -> Entity {
-        return Entity {
-            position: Point3::new(0.0, 0.0, 0.0),
-            orientation: Quaternion::zero(),
-            scale: 1.0,
-            emitter: EventEmitter::new(),
-            components: Vec::new()
-        };
+        Entity::from(Point3::new(0.0, 0.0, 0.0), Quaternion::zero(), 1.0)
     }
 
     /// Create a new entity from properties.
@@ -74,19 +69,21 @@ impl Entity {
             // Create a weak from the wrapper to clone later.
             let weak = Rc::downgrade(&wrapped);
 
-            // Call the component's subscribe method with self injection.
-            let pairs = wrapped.borrow_mut().subscribe(self);
+            // Bypass rust safety checks.
+            let this = Data::from(self);
 
-            // Go through the pairs.
-            for (events, closure) in pairs.into_iter() {
-                // Create a listener from each closure.
-                let listener = Listener::<Any>::new(weak.clone(), closure);
-                // Go through the events that the listener wants to listen for.
-                for event in events.into_iter() {
-                    // Subscribe the listener to each of those events.
-                    self.emitter.on(event, listener.clone());
+            // Call the component's init method.
+            wrapped.borrow_mut().init(self,
+                &move |events, closure| {
+                    // Create a listener from the given closure.
+                    let listener = Listener::<Any>::new(weak.clone(), closure);
+                    // Go through the events that the listener wants to listen for.
+                    for event in events.into_iter() {
+                        // Subscribe the listener to each of those events.
+                        this.to::<Entity>().on(event, listener.clone());
+                    }
                 }
-            }
+            );
 
             // Finally take in the wrapped component.
             self.components.push(wrapped.clone());
@@ -107,17 +104,18 @@ impl Entity {
 
         return None
     }
+}
 
-    /// Emit an event with some data.
-    #[inline]
-    pub fn emit(&mut self, event: Event, data: Data) {
-        self.emitter.emit(event, data);
+impl Deref for Entity {
+    type Target = EventEmitter<Any>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.emitter
     }
+}
 
-    /// Emit an `update` event with the entity itself as data.
-    #[inline]
-    pub fn update(&mut self) {
-        let data = Data::from(self);
-        self.emit(Event("update"), data);
+impl DerefMut for Entity {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.emitter
     }
 }

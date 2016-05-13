@@ -84,23 +84,9 @@ impl Cuboid {
     }
 }
 
-impl Deref for Cuboid {
-    type Target = Entity;
-
-    fn deref(&self) -> &Entity {
-        return &self.entity;
-    }
-}
-
-impl DerefMut for Cuboid {
-    fn deref_mut(&mut self) -> &mut Entity {
-        return &mut self.entity;
-    }
-}
-
 impl Renderable for Cuboid {
     fn priority(&self) -> u32 {
-        return self.priority;
+        self.priority
     }
 
     fn model_matrix(&self) -> Matrix4<f32> {
@@ -111,7 +97,7 @@ impl Renderable for Cuboid {
         let rotation_matrix = Matrix4::from_quat(&self.entity.orientation);
         let translate_matrix = Matrix4::from_translation(self.entity.position.to_vec());
 
-        return translate_matrix * rotation_matrix * scale_matrix;
+        translate_matrix * rotation_matrix * scale_matrix
     }
 
     fn draw(&self, draw_space: Matrix4<f32>, camera: &Camera) {
@@ -131,6 +117,20 @@ impl Renderable for Cuboid {
         self.ebo.bind();
 
         unsafe { gl::DrawElements(gl::TRIANGLES, 12*3, gl::UNSIGNED_BYTE, ptr::null()); }
+    }
+}
+
+impl Deref for Cuboid {
+    type Target = Entity;
+
+    fn deref(&self) -> &Entity {
+        &self.entity
+    }
+}
+
+impl DerefMut for Cuboid {
+    fn deref_mut(&mut self) -> &mut Entity {
+        &mut self.entity
     }
 }
 

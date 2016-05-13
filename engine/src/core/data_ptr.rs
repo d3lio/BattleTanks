@@ -17,7 +17,7 @@ pub struct Data(*mut ());
 impl Data {
     /// Creates a new data structure from a mutable reference.
     ///
-    /// This function is perfectrly safe unlike `Data::to`.
+    /// This function is perfectly safe unlike `Data::to`.
     #[inline]
     pub fn from<T>(data_ref: &mut T) -> Data {
         Data(data_ref as *mut T as *mut ())

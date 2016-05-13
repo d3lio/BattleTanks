@@ -12,6 +12,27 @@ use std::cell::RefCell;
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub struct Event(pub &'static str);
 
+/// Creates a vector of events from string literals.
+///
+/// # Examples
+///
+/// ```
+/// #[macro_use(events)]
+/// extern crate engine;
+/// # fn main() {
+/// use engine::core::Event;
+///
+/// let events = events!("move", "rotate");
+/// assert_eq!(events, vec!(Event("move"), Event("rotate")));
+/// # }
+/// ```
+#[macro_export]
+macro_rules! events {
+    ( $( $x: expr ),* ) => {
+        vec![ $( Event($x), )* ]
+    }
+}
+
 /// Single threaded event listener for the `EventEmitter`.
 ///
 /// Unlike other event emitter APIs, this listener implementation holds a closure and
