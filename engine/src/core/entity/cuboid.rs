@@ -49,7 +49,7 @@ impl Cuboid {
 
         // Initialize once
         unsafe {
-            if PROGRAM == ptr::null() {
+            if PROGRAM.is_null() {
                 PROGRAM = Box::into_raw(Box::new(ProgramBuilder::new()
                     .attach_vs(&Shader::new(ShaderType::Vertex, VS_SRC).unwrap())
                     .attach_fs(&Shader::new(ShaderType::Fragment, FS_SRC).unwrap())
@@ -57,14 +57,14 @@ impl Cuboid {
                     .unwrap()));
             }
 
-            if VBO == ptr::null() {
+            if VBO.is_null() {
                 VBO = Box::into_raw(Box::new(Rc::new(Buffer::from_data(
                     &VERTICES,
                     BufferType::Array,
                     BufferUsagePattern::StaticDraw))));
             }
 
-            if EBO == ptr::null() {
+            if EBO.is_null() {
                 EBO = Box::into_raw(Box::new(Rc::new(Buffer::from_data(
                     &ELEMENTS,
                     BufferType::ElementArray,

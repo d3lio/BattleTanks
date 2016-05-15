@@ -54,7 +54,7 @@ impl Data {
     /// Checks if the underlying pointer is null.
     #[inline(always)]
     pub fn is_null(&self) -> bool {
-        self.0 as u32 == 0
+        self.0.is_null()
     }
 }
 
