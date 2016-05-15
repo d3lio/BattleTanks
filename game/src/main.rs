@@ -6,13 +6,11 @@ extern crate gl;
 
 use engine::gliw::{Gliw, DepthFunction, ProgramBuilder, Shader, ShaderType};
 
-use engine::core::{Camera, Renderable, Scene, Composition, Cuboid, Color, Entity, Event, Data};
+use engine::core::{Camera, Renderable, Scene, Composition, Cuboid, Color, Event, Data};
 
 use cgmath::{Point3, Vector3};
 
 use glfw::{Action, Context, Key};
-
-use std::ops::DerefMut;
 
 mod simple_plain;
 mod simple_component;
@@ -140,11 +138,6 @@ fn main() {
         cuboid4.borrow_mut().position.x = cuboid4_pos_x +
             f64::sin(glfw.get_time() * animation_speed) as f32;
 
-        // Trigger the AntiClockwiseRotation component
-        let cuboid6_ent = (*cuboid6.borrow_mut()).deref_mut() as *mut Entity;
-        cuboid6.borrow_mut().emit(Event("rotate"),
-            Data::from(&mut (cuboid6_ent, glfw.get_time())));
-
         // Clockwise rotation
         cuboid4_child_comp.borrow_mut().look_at(
             Vector3::new(
@@ -152,6 +145,9 @@ fn main() {
                 0.0,
                 f64::cos(glfw.get_time() * animation_speed) as f32),
             Vector3::new(0.0, 1.0, 0.0));
+
+        // Trigger the AntiClockwiseRotation component
+        cuboid6.borrow_mut().emit(Event("rotate"), Data::from(&mut glfw.get_time()));
 
         scene.camera_mut().look_at(
             Point3::<f32>::new(

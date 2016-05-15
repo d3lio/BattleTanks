@@ -27,7 +27,6 @@ use std::ptr;
 use std::mem;
 
 /// A general purpose cuboid entity.
-#[allow(dead_code)]
 pub struct Cuboid {
     entity: Entity,
     dimensions: Vector3<f32>,
@@ -35,32 +34,49 @@ pub struct Cuboid {
     priority: u32,
 
     vao: Vao,
-    vbo: Buffer,            // FIXME: should be static
-    ebo: Buffer,            // FIXME: should be static
+    ebo: Rc<Buffer>,
     program: Rc<Program>
 }
 
 impl Cuboid {
     /// Creates a new cuboid from given center, dimensions and color.
     pub fn new(center: Point3<f32>, dimensions: Vector3<f32>, color: Vector4<f32>) -> Cuboid {
-        // FIXME: should be static
-        let program = ProgramBuilder::new()
-            .attach_vs(&Shader::new(ShaderType::Vertex, VS_SRC).unwrap())
-            .attach_fs(&Shader::new(ShaderType::Fragment, FS_SRC).unwrap())
-            .link()
-            .unwrap();
+        macro_rules! null { () => (0 as *const _) }
+
+        static mut PROGRAM: *const Rc<Program> = null!();
+        static mut VBO: *const Rc<Buffer> = null!();
+        static mut EBO: *const Rc<Buffer> = null!();
+
+        // Initialize once
+        unsafe {
+            if PROGRAM == ptr::null() {
+                PROGRAM = Box::into_raw(Box::new(ProgramBuilder::new()
+                    .attach_vs(&Shader::new(ShaderType::Vertex, VS_SRC).unwrap())
+                    .attach_fs(&Shader::new(ShaderType::Fragment, FS_SRC).unwrap())
+                    .link()
+                    .unwrap()));
+            }
+
+            if VBO == ptr::null() {
+                VBO = Box::into_raw(Box::new(Rc::new(Buffer::from_data(
+                    &VERTICES,
+                    BufferType::Array,
+                    BufferUsagePattern::StaticDraw))));
+            }
+
+            if EBO == ptr::null() {
+                EBO = Box::into_raw(Box::new(Rc::new(Buffer::from_data(
+                    &ELEMENTS,
+                    BufferType::ElementArray,
+                    BufferUsagePattern::StaticDraw))));
+            }
+        }
 
         let vao = Vao::new();
 
-        let vbo = Buffer::from_data(
-            &VERTICES,
-            BufferType::Array,
-            BufferUsagePattern::StaticDraw);
-
-        let ebo = Buffer::from_data(
-            &ELEMENTS,
-            BufferType::ElementArray,
-            BufferUsagePattern::StaticDraw);
+        let program = unsafe { (*PROGRAM).clone() };
+        let vbo = unsafe { (*VBO).clone() };
+        let ebo = unsafe { (*EBO).clone() };
 
         let va = VertexAttrib::new(0);
         va.data_float_format(&vao, &vbo, AttribFloatFormat::Float(3), 0, ptr::null());
@@ -72,7 +88,6 @@ impl Cuboid {
             color: color,
             priority: 0,
             vao: vao,
-            vbo: vbo,
             ebo: ebo,
             program: program
         };
