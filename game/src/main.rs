@@ -20,12 +20,12 @@ use engine::core::{
     Scene
 };
 
-use engine::overlay::{OverlayHandle, WindowHandle, WindowParams};
+use engine::overlay::{Overlay, Window, WindowParams};
 
 use cgmath::{
     Matrix4,
     Angle, Deg,
-    Vector2, Vector3, Point3, Vector
+    Vector2, Vector3, Vector4, Point3, Vector
 };
 
 use glfw::{
@@ -199,32 +199,35 @@ fn main() {
     let mut scene = Scene::new();
     scene.add(entity.clone());
 
-    let ov = OverlayHandle::new(800, 600);
-    let wnd3 = WindowHandle::new("inner", WindowParams {
+    let ov = Overlay::new(800, 600);
+    let wnd3 = Window::new("inner", WindowParams {
         pos: Vector2{x: Vector3::new(0.0, 0.0, 10.0), y: Vector3::new(0.0, 0.1, 0.0)},
         size: Vector2{x: Vector3::new(1.0, 0.0, -20.0), y: Vector3::new(0.0, 0.0, 40.0)},
         color: [Vector4::new(1.0, 1.0, 1.0, 1.0); 4],
-        texcoord: [Vector2::zero(); 4]
+        texcoord: [Vector2::zero(); 4],
+        shown: true,
     });
-    let wnd1 = WindowHandle::new("wnd1", WindowParams {
+    let wnd1 = Window::new("wnd1", WindowParams {
         pos: Vector2{x: Vector3::zero(), y: Vector3::zero()},
         size: Vector2{x: Vector3::new(0.2, 0.0, 0.0), y: Vector3::new(0.0, 1.0, 0.0)},
         color: [Vector4::new(0.8, 0.8, 0.5, 0.6); 4],
         texcoord: [Vector2::zero(); 4],
+        shown: true,
     });
-    let wnd2 = WindowHandle::new("wnd2", WindowParams {
+    let wnd2 = Window::new("wnd2", WindowParams {
         pos: Vector2{x: Vector3::new(0.2, 0.0, 10.0), y: Vector3::zero()},
         size: Vector2{x: Vector3::new(0.2, 0.0, -10.0), y: Vector3::new(0.0, 1.0, 0.0)},
         color: [Vector4::new(1.0, 0.5, 0.5, 0.9); 4],
         texcoord: [Vector2::zero(); 4],
+        shown: true,
     });
 
-    let wnd1 = ov.root().attach(wnd1);
-    let wnd2 = ov.root().attach(wnd2);
-    wnd1.attach(wnd3);
+    ov.root().attach(&wnd1);
+    ov.root().attach(&wnd2);
+    wnd1.attach(&wnd3);
 
-    let wnd3 = wnd1.child("inner").unwrap().detach();
-    wnd2.attach(wnd3);
+    wnd1.child("inner").unwrap().detach();
+    wnd2.attach(&wnd3);
 
     while !window.should_close() {
         let t = glfw.get_time();
