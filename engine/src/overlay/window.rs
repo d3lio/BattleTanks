@@ -31,28 +31,18 @@ impl Default for WindowParams {
 }
 
 impl WindowData {
-    pub fn new(name: &str, data: WindowParams) -> WindowData {
+    pub fn new(name: &str, params: WindowParams) -> WindowData {
         return WindowData {
             name: String::from(name),
-            creation_data: data,
+            params: params,
             overlay: ptr::null_mut(),
             pos: Vec2::zero(),
             size: Vec2::zero(),
             children: Vec::new(),
             parent: WindowWeak(None),
-            vbo_beg: -1,
-            vbo_end: -1,
+            index_beg: 0,
+            index_end: 0,
         };
-    }
-
-    pub fn overlay(&self) -> Option<&OverlayData> {
-        unsafe {
-            if self.overlay == ptr::null_mut() {
-                return None;
-            } else {
-                return Some(&*self.overlay);
-            }
-        }
     }
 
     pub fn overlay_mut(&mut self) -> Option<&mut OverlayData> {
@@ -67,17 +57,19 @@ impl WindowData {
 
     pub fn full_path(&self) -> String {
         match self.parent.upgrade() {
-            Some(parent) => parent.borrow().full_path() + "." + &self.name,
+            Some(parent) => parent.borrow().full_path() + SEPR + &self.name,
             None => self.name.clone()
         }
     }
 }
 
 impl Window {
-    pub fn new(name: &str, data: WindowParams) -> Window {
-        Window(Rc::new(Box::new(RefCell::new(WindowData::new(name, data)))))
+    /// Create a new window with the given name and parameters.
+    pub fn new(name: &str, params: WindowParams) -> Window {
+        Window(Rc::new(Box::new(RefCell::new(WindowData::new(name, params)))))
     }
 
+    /// Get a child by relative path
     pub fn child(&self, path: &str) -> Option<Window> {
         let mut next_window = self.clone();
         let mut path = path;
@@ -86,7 +78,7 @@ impl Window {
             let curr_window = next_window.clone();
             let window = curr_window.0.borrow();
 
-            match path.find('.') {
+            match path.find(SEPR) {
                 Some(seperator_pos) => {
                     let (curr_name, rest_path) = path.split_at(seperator_pos);
                     let rest_path = &rest_path[1..];
@@ -112,23 +104,30 @@ impl Window {
         }
     }
 
+    /// Attaches a new window as a child.
+    ///
+    /// If the window is attached to an overlay, attaching or detaching windows
+    /// will cause a full update to the window hierarchy tree in order to update
+    /// the rendering buffers.
+    ///
+    /// # Panics
+    /// If `child` is already attached to another window. <br>
+    /// If `self` already contains a child window with the same name as `child`.
+    ///
     pub fn attach(&self, child: &Window) {
         {
-            let window_ref = self.0.borrow();
             let child_ref = child.0.borrow();
-
-            assert!(child_ref.overlay().is_none(), "child overlay is not none");
 
             if child_ref.parent.upgrade().is_some() {
                 panic!(format!("Cannot attach window \"{}\" to \"{}\" because it is already attached",
                     child_ref.full_path(),
-                    window_ref.full_path()));
+                    self.0.borrow().full_path()));
             }
 
             if self.child(&child_ref.name).is_some() {
                 panic!(format!("Cannot attach window \"{}\" to \"{}\" because the second already has a child with the same name",
                     child_ref.full_path(),
-                    window_ref.full_path()));
+                    self.0.borrow().full_path()));
             }
         }
 
@@ -141,43 +140,82 @@ impl Window {
         }
     }
 
+    /// Detaches the window from its parent.
+    ///
+    /// If the window is attached to an overlay, attaching or detaching windows
+    /// will cause a full update to the window hierarchy tree in order to update
+    /// the rendering buffers.
+    ///
+    /// # Panics
+    /// If `self` is not attached to another window.
     pub fn detach(&self) {
         let parent: Window;
         if let Some(p) = self.0.borrow().parent.upgrade() {
             parent = Window(p);
         } else {
-            panic!("window is not attached");
+            panic!(format!("Cannot detach window \"{}\" because it is not attached no anything",
+                self.0.borrow().full_path()));
         }
 
-        let mut parent_mut = parent.0.borrow_mut();
-        parent_mut.children.retain(|item| !Window::same(self, item));
+        self.0.borrow_mut().parent = WindowWeak(None);
+        parent.0.borrow_mut().children.retain(|item| self != item);
 
-        let mut window_mut = self.0.borrow_mut();
-        window_mut.parent = WindowWeak(None);
-
-        if let Some(ovl) = window_mut.overlay_mut() {
+        if let Some(ovl) = self.0.borrow_mut().overlay_mut() {
             ovl.should_reindex = true;
         }
 
-        // TODO: update recursively
-        window_mut.overlay = ptr::null_mut();
+        // recursively update all children to set overlay to null
+        helper(self);
+
+        fn helper(window: &Window) {
+            window.0.borrow_mut().overlay = ptr::null_mut();
+
+            for child in &window.0.borrow().children {
+                helper(child);
+            }
+        }
     }
 
     // TODO: implement
     // pub fn detach_child(&self, path: &str) -> Window<'static> {
     // }
 
+    /// Executes a closure which can be used to modify the window parameters.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # extern crate cgmath;
+    /// # extern crate engine;
+    /// # use engine::overlay::Window;
+    /// # use cgmath::{vec2, vec3};
+    /// # fn main () {
+    /// // A window initialized somewhere else
+    /// let window: Window;
+    /// # unsafe { window = std::mem::uninitialized(); }
+    ///
+    /// window.modify(|params| {
+    ///     params.pos.x = vec3(0.5, 0.0, 50.0);
+    ///     params.texcoord = [vec2(0.0, 0.0), vec2(5.0, 0.0), vec2(5.0, 5.0), vec2(0.0, 5.0)];
+    /// });
+    /// # }
+    /// ```
     pub fn modify<F> (&self, modfn: F)
         where F: Fn(&mut WindowParams)
     {
-        modfn(&mut self.0.borrow_mut().creation_data);
+        modfn(&mut self.0.borrow_mut().params);
 
-        if let Some(ovl) = self.0.borrow().overlay() {
-            ovl.update_subtree(self.clone());
+        unsafe {
+            let ovl = self.0.borrow().overlay;
+            if ovl != ptr::null_mut() {
+                (*ovl).update_subtree(self.clone());
+            }
         }
     }
+}
 
-    pub fn same(&self, other: &Window) -> bool {
+impl Eq for Window {}
+impl PartialEq for Window {
+    fn eq(&self, other: &Window) -> bool {
         &*self.0 as *const Box<_> == &*other.0 as *const Box<_>
     }
 }
@@ -190,3 +228,6 @@ impl WindowWeak {
         }
     }
 }
+
+/// Separator character for window paths
+const SEPR: &'static str = "/";

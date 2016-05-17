@@ -27,18 +27,12 @@ struct VertexData {
     color: Vec4,
 }
 
-impl Default for VertexData {
-    fn default() -> Self {
-        unsafe { mem::zeroed::<Self>() }
-    }
-}
-
 impl OverlayData {
     pub fn new(width: u32, height: u32) -> OverlayData {
         let vao = Vao::new();
         let vbo = Vbo::new(BufferType::Array);
 
-        // TODO: should I print a more helpfull error message
+        // TODO: should I print a more helpfull error message?
         let vs = Shader::new(ShaderType::Vertex, VSHADER).unwrap();
         let fs = Shader::new(ShaderType::Fragment, FSHADER).unwrap();
 
@@ -68,14 +62,13 @@ impl OverlayData {
 
         unsafe { prog.uniform("proj").value(UniformData::FloatMat(4, false, &mem::transmute::<_, [f32; 16]>(proj_mat))); }
 
-        let mut root = WindowData::new("", WindowParams {
+        let root = WindowData::new("", WindowParams {
             pos: Vector2::new(Vec3::zero(), Vec3::zero()),
             size: Vector2::new(Vec3::new(0.0, 0.0, width as f32), Vec3::new(0.0, 0.0, height as f32)),
             color: [Vec4::zero(); 4],
             texcoord: [Vec2::zero(); 4],
             shown: true,
         });
-        root.vbo_beg = 0;
 
         let mut overlay = OverlayData {
             vao: vao,
@@ -104,7 +97,7 @@ impl OverlayData {
             return;
         }
 
-        let len = reindex(self.root.clone()) as usize;
+        let len = Self::reindex(self.root.clone());
 
         // update indices array
         self.indices.truncate(6 * len);
@@ -127,22 +120,6 @@ impl OverlayData {
         }
 
         self.update_subtree(self.root.clone());
-
-        fn reindex(window: Window) -> isize {
-            let mut prev_end;
-            {
-                let window_ref = window.0.borrow();
-                prev_end = window_ref.vbo_beg + 1;
-
-                for child in &window_ref.children {
-                    child.0.borrow_mut().vbo_beg = prev_end;
-                    prev_end = reindex(child.clone());
-                }
-            }
-
-            window.0.borrow_mut().vbo_end = prev_end;
-            return prev_end;
-        }
     }
 
     pub fn update_subtree(&self, window: Window) {
@@ -154,118 +131,143 @@ impl OverlayData {
         let offset;
         {
             let window_ref = window.0.borrow();
-            len = (window_ref.vbo_end - window_ref.vbo_beg) as usize;
-            offset = window_ref.vbo_beg as usize;
+            len = window_ref.index_end - window_ref.index_beg;
+            offset = window_ref.index_beg;
         }
 
-        let mut vbo_data = vec![VertexData::default(); 4 * len];
-        helper(window, &mut vbo_data, 4 * offset);
+        let mut vbo_data;
+        unsafe { vbo_data = vec![mem::uninitialized::<VertexData>(); 4 * len]; }
+        Self::update_buffer(window, &mut vbo_data, 4 * offset);
 
         unsafe {
             self.vbo.bind();
             gl::BufferSubData(self.vbo.buf_type() as u32, (4 * offset * mem::size_of::<VertexData>()) as isize,
                 (4 * len * mem::size_of::<VertexData>()) as isize, vbo_data.as_ptr() as *const _);
         }
+    }
 
-        fn helper(window: Window, vbo_data: &mut Vec<VertexData>, offset: usize) {
-            let new_pos: Vec2;
-            let new_size: Vec2;
-            {
-                let window_ref = window.0.borrow();
-
-                if window_ref.creation_data.shown == false {
-                    new_pos = Vec2{x: -1.0, y: -1.0};
-                    new_size = Vec2{x: 0.0, y: 0.0};
-                }
-                else if let Some(parent) = window_ref.parent.upgrade() {
-                    let parent = parent.borrow();
-
-                    new_pos = Vec2 {
-                        x: parent.pos.x + Vec3::dot(window_ref.creation_data.pos.x, cgmath::vec3(parent.size.x, parent.size.y, 1.0)),
-                        y: parent.pos.y + Vec3::dot(window_ref.creation_data.pos.y, cgmath::vec3(parent.size.x, parent.size.y, 1.0)),
-                    };
-
-                    new_size = Vec2 {
-                        x: Vec3::dot(window_ref.creation_data.size.x, cgmath::vec3(parent.size.x, parent.size.y, 1.0)),
-                        y: Vec3::dot(window_ref.creation_data.size.y, cgmath::vec3(parent.size.x, parent.size.y, 1.0)),
-                    };
-                }
-                else {
-                    new_pos = Vec2{x: window_ref.creation_data.pos.x.z, y: window_ref.creation_data.pos.y.z};
-                    new_size = Vec2{x: window_ref.creation_data.size.x.z, y: window_ref.creation_data.size.y.z};
-                }
-            }
-
-            {
-                let mut window_mut = window.0.borrow_mut();
-                window_mut.pos = new_pos;
-                window_mut.size = new_size;
-            }
-
+    fn reindex(window: Window) -> usize {
+        let mut prev_end;
+        {
             let window_ref = window.0.borrow();
-
-            vbo_data[4 * window_ref.vbo_beg as usize - offset] = VertexData {
-                pos: window_ref.pos,
-                uv: window_ref.creation_data.texcoord[0],
-                color: window_ref.creation_data.color[0],
-            };
-            vbo_data[4 * window_ref.vbo_beg as usize + 1 - offset] = VertexData {
-                pos: window_ref.pos + cgmath::vec2(window_ref.size.x, 0.0),
-                uv: window_ref.creation_data.texcoord[1],
-                color: window_ref.creation_data.color[1],
-            };
-            vbo_data[4 * window_ref.vbo_beg as usize + 2 - offset] = VertexData {
-                pos: window_ref.pos + window_ref.size,
-                uv: window_ref.creation_data.texcoord[3],
-                color: window_ref.creation_data.color[3],
-            };
-            vbo_data[4 * window_ref.vbo_beg as usize + 3 - offset] = VertexData {
-                pos: window_ref.pos + cgmath::vec2(0.0, window_ref.size.y),
-                uv: window_ref.creation_data.texcoord[2],
-                color: window_ref.creation_data.color[2],
-            };
+            prev_end = window_ref.index_beg + 1;
 
             for child in &window_ref.children {
-                helper(child.clone(), vbo_data, offset);
+                child.0.borrow_mut().index_beg = prev_end;
+                prev_end = Self::reindex(child.clone());
             }
+        }
+
+        window.0.borrow_mut().index_end = prev_end;
+        return prev_end;
+    }
+
+    fn update_buffer(window: Window, vbo_data: &mut Vec<VertexData>, offset: usize) {
+        let new_pos: Vec2;
+        let new_size: Vec2;
+        {
+            let window_ref = window.0.borrow();
+
+            if window_ref.params.shown == false {
+                new_pos = Vec2{x: -1.0, y: -1.0};
+                new_size = Vec2{x: 0.0, y: 0.0};
+            }
+            else if let Some(parent) = window_ref.parent.upgrade() {
+                let parent = parent.borrow();
+
+                new_pos = Vec2 {
+                    x: parent.pos.x + Vec3::dot(window_ref.params.pos.x, cgmath::vec3(parent.size.x, parent.size.y, 1.0)),
+                    y: parent.pos.y + Vec3::dot(window_ref.params.pos.y, cgmath::vec3(parent.size.x, parent.size.y, 1.0)),
+                };
+
+                new_size = Vec2 {
+                    x: Vec3::dot(window_ref.params.size.x, cgmath::vec3(parent.size.x, parent.size.y, 1.0)),
+                    y: Vec3::dot(window_ref.params.size.y, cgmath::vec3(parent.size.x, parent.size.y, 1.0)),
+                };
+            }
+            else {
+                new_pos = Vec2{x: window_ref.params.pos.x.z, y: window_ref.params.pos.y.z};
+                new_size = Vec2{x: window_ref.params.size.x.z, y: window_ref.params.size.y.z};
+            }
+        }
+
+        {
+            let mut window_mut = window.0.borrow_mut();
+            window_mut.pos = new_pos;
+            window_mut.size = new_size;
+        }
+
+        let window_ref = window.0.borrow();
+
+        vbo_data[4 * window_ref.index_beg as usize - offset] = VertexData {
+            pos: window_ref.pos,
+            uv: window_ref.params.texcoord[0],
+            color: window_ref.params.color[0],
+        };
+        vbo_data[4 * window_ref.index_beg as usize + 1 - offset] = VertexData {
+            pos: window_ref.pos + cgmath::vec2(window_ref.size.x, 0.0),
+            uv: window_ref.params.texcoord[1],
+            color: window_ref.params.color[1],
+        };
+        vbo_data[4 * window_ref.index_beg as usize + 2 - offset] = VertexData {
+            pos: window_ref.pos + window_ref.size,
+            uv: window_ref.params.texcoord[3],
+            color: window_ref.params.color[3],
+        };
+        vbo_data[4 * window_ref.index_beg as usize + 3 - offset] = VertexData {
+            pos: window_ref.pos + cgmath::vec2(0.0, window_ref.size.y),
+            uv: window_ref.params.texcoord[2],
+            color: window_ref.params.color[2],
+        };
+
+        for child in &window_ref.children {
+            Self::update_buffer(child.clone(), vbo_data, offset);
         }
     }
 }
 
 impl Drop for OverlayData {
     fn drop(&mut self) {
-        // let root = self.root.0.borrow();
+        let root = self.root.0.borrow();
 
-        // TODO: this causes the rc to be borrowed twice
-        // instead we could just update the overlay pointer
+        for window in &root.children {
+            helper(window);
+        }
 
-        // for window in &root.children {
-        //     window.detach();
-        // }
+        fn helper(window: &Window) {
+            window.0.borrow_mut().overlay = ptr::null_mut();
+
+            for child in &window.0.borrow().children {
+                helper(child);
+            }
+        }
     }
 }
 
 impl Overlay {
-    /// Create a new Overlay.
+    /// Creates a new overlay containing the whole viewport.
+    ///
+    /// `width` and `height` are the dimentions of the viewport.
     #[inline]
     pub fn new(width: u32, height: u32) -> Overlay {
-        Overlay(RefCell::new(OverlayData::new(width, height)))
+        let mut ovl_box = Box::new(OverlayData::new(width, height));
+        ovl_box.root.0.borrow_mut().overlay = &mut *ovl_box;
+        Overlay(ovl_box)
     }
 
-    /// Render the overlay windows.
+    /// Render all attached windows.
     ///
     /// In order to render correctly depth testing must be disabled and alpha blending enabled.
     #[inline]
-    pub fn draw(&self) {
-        let mut ovl = self.0.borrow_mut();
-        ovl.update();
-        ovl.draw();
+    pub fn draw(&mut self) {
+        self.0.update();
+        self.0.draw();
     }
 
-    /// Get handle to the root window of the overlay.
+    /// Get the root window.
     #[inline]
     pub fn root(&self) -> Window {
-        self.0.borrow().root.clone()
+        self.0.root.clone()
     }
 }
 

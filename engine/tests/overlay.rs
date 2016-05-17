@@ -3,16 +3,16 @@ extern crate cgmath;
 
 mod common;
 
-use engine::overlay::{Overlay, Window, WindowParams};
+use engine::overlay::{Window, WindowParams};
 
 #[test]
 /// Handles to the same window should be equal no matter how one acquires them
-fn window_handle_same() {
+fn window_handle_eq() {
     common::init_gl();
     let params = WindowParams::default();
 
     let wnd_root = Window::new("wnd_root", params);
-    assert!(Window::same(&wnd_root, &wnd_root));
+    assert_eq!(wnd_root, wnd_root);
 
     let wnd1_0 = Window::new("wnd1", params);
     wnd_root.attach(&wnd1_0);
@@ -20,8 +20,8 @@ fn window_handle_same() {
     let wnd1_1 = wnd_root.child("wnd1").unwrap();
     let wnd1_2 = wnd_root.child("wnd1").unwrap();
 
-    assert!(Window::same(&wnd1_0, &wnd1_1));
-    assert!(Window::same(&wnd1_1, &wnd1_2));
+    assert_eq!(wnd1_0, wnd1_1);
+    assert_eq!(wnd1_1, wnd1_2);
 }
 
 #[test]
@@ -39,10 +39,10 @@ fn window_handle_paths() {
     wnd_root.attach(&wnd1);
     wnd_root.attach(&wnd2);
 
-    assert!(Window::same(&wnd1, &wnd_root.child("wnd1").unwrap()));
-    assert!(Window::same(&wnd2, &wnd_root.child("wnd2").unwrap()));
-    assert!(Window::same(&wnd3, &wnd_root.child("wnd1.wnd3").unwrap()));
-    assert!(Window::same(&wnd3, &wnd1.child("wnd3").unwrap()));
+    assert_eq!(&wnd1, &wnd_root.child("wnd1").unwrap());
+    assert_eq!(&wnd2, &wnd_root.child("wnd2").unwrap());
+    assert_eq!(&wnd3, &wnd_root.child("wnd1/wnd3").unwrap());
+    assert_eq!(&wnd3, &wnd1.child("wnd3").unwrap());
 
     assert!(wnd_root.child("foo").is_none());
     assert!(wnd_root.child("wnd3").is_none());
@@ -65,10 +65,10 @@ fn window_handle_paths() {
 
 //     let wnd1_1 = wnd1_1.detach();
 
-//     assert!(Window::same(&wnd1_1, &wnd1_2));
+//     assert!(Window::eq(&wnd1_1, &wnd1_2));
 
 //     // wnd2.attach(wnd1_1);
 //     wnd2.attach(wnd1_2);
 
-//     assert!(Window::same(&wnd1_1, &wnd1_2));
+//     assert!(Window::eq(&wnd1_1, &wnd1_2));
 // }

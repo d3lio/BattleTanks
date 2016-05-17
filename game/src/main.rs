@@ -199,7 +199,7 @@ fn main() {
     let mut scene = Scene::new();
     scene.add(entity.clone());
 
-    let ov = Overlay::new(800, 600);
+    let mut ov = Overlay::new(800, 600);
     let wnd3 = Window::new("inner", WindowParams {
         pos: Vector2{x: Vector3::new(0.0, 0.0, 10.0), y: Vector3::new(0.0, 0.1, 0.0)},
         size: Vector2{x: Vector3::new(1.0, 0.0, -20.0), y: Vector3::new(0.0, 0.0, 40.0)},
