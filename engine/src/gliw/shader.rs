@@ -33,7 +33,8 @@ impl Shader {
 
             let mut status: i32 = 0;
             gl::GetShaderiv(shader, gl::COMPILE_STATUS, &mut status);
-            if status != (gl::TRUE as i32) {
+
+            if status == gl::FALSE as i32 {
                 let mut log_size: i32 = 0;
                 gl::GetShaderiv(shader, gl::INFO_LOG_LENGTH, &mut log_size);
 

@@ -2,4 +2,4 @@
 
 mod gl_util;
 
-pub use gl_util::init_gl;
+pub use self::gl_util::init_gl;

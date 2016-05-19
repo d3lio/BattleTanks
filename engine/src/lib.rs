@@ -9,3 +9,4 @@ macro_rules! wrap {
 pub mod core;
 pub mod gliw;
 pub mod math;
+pub mod overlay;
