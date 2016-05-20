@@ -16,14 +16,14 @@
 //! The four vertices of the rectangle are enumereated in the following order:
 //!
 //!   * vertex 0 - upper left
-//!   * vertex 1 - upper right
-//!   * vertex 2 - bottom left
-//!   * vertex 3 - bottom right
+//!   * vertex 1 - bottom left
+//!   * vertex 2 - bottom right
+//!   * vertex 3 - upper right
 //!
 //! Each window has a name, which is a string not containing the `/` character. Names can be concatinated, separated
 //! by the `/` character to create paths, which can be used to identify windows in the hierarchy tree.
 //! Since the paths are used as identifiers they must be unique within the same overlay.
-//! However the is no such restriction for window names - there can be multiple windows with the same name.
+//! However there is no such restriction for window names - there can be multiple windows with the same name.
 //!
 //! The order of rendering is dependent on the order in which windows are attached to each other -
 //! it is a pre-order traversal of the hierarchy tree.

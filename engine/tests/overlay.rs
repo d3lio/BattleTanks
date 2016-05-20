@@ -3,11 +3,11 @@ extern crate cgmath;
 
 mod common;
 
-use engine::overlay::{Window, WindowParams};
+use engine::overlay::{Overlay, Window, WindowParams};
 
 #[test]
 /// Handles to the same window should be equal no matter how one acquires them
-fn window_handle_eq() {
+fn window_eq() {
     common::init_gl();
     let params = WindowParams::default();
 
@@ -26,7 +26,7 @@ fn window_handle_eq() {
 
 #[test]
 /// Tests attaching windows and getting windows by path
-fn window_handle_paths() {
+fn window_paths() {
     common::init_gl();
     let params = WindowParams::default();
 
@@ -49,26 +49,24 @@ fn window_handle_paths() {
     assert!(wnd1.child("wnd2").is_none());
 }
 
-// #[test]
-// fn window_handle_multiple() {
-//     common::init_gl();
-//     let params = WindowParams::default();
+#[test]
+fn window_multiple() {
+    common::init_gl();
+    let params = WindowParams::default();
 
-//     let ovl = OverlayHandle::new(800, 600);
+    let ovl = Overlay::new(800, 600);
 
-//     ovl.root().attach(Window::new("wnd1", params));
-//     let wnd2 = ovl.root().attach(Window::new("wnd2", params));
+    ovl.root().attach(&Window::new("wnd1", params));
 
-//     let root = ovl.root();
-//     let wnd1_1 = root.child("wnd1").unwrap();
-//     let wnd1_2 = root.child("wnd1").unwrap();
+    let wnd2 = Window::new("wnd2", params);
+    ovl.root().attach(&wnd2);
 
-//     let wnd1_1 = wnd1_1.detach();
+    let wnd1_1 = ovl.root().child("wnd1").unwrap();
+    let wnd1_2 = ovl.root().child("wnd1").unwrap();
+    wnd1_1.detach();
 
-//     assert!(Window::eq(&wnd1_1, &wnd1_2));
+    assert!(Window::eq(&wnd1_1, &wnd1_2));
 
-//     // wnd2.attach(wnd1_1);
-//     wnd2.attach(wnd1_2);
-
-//     assert!(Window::eq(&wnd1_1, &wnd1_2));
-// }
+    wnd2.attach(&wnd1_2);
+    assert!(Window::eq(&wnd1_1, &wnd1_2));
+}

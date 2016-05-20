@@ -205,19 +205,19 @@ impl OverlayData {
             color: window_ref.params.color[0],
         };
         vbo_data[4 * window_ref.index_beg as usize + 1 - offset] = VertexData {
-            pos: window_ref.pos + cgmath::vec2(window_ref.size.x, 0.0),
+            pos: window_ref.pos + cgmath::vec2(0.0, window_ref.size.y),
             uv: window_ref.params.texcoord[1],
             color: window_ref.params.color[1],
         };
         vbo_data[4 * window_ref.index_beg as usize + 2 - offset] = VertexData {
             pos: window_ref.pos + window_ref.size,
-            uv: window_ref.params.texcoord[3],
-            color: window_ref.params.color[3],
-        };
-        vbo_data[4 * window_ref.index_beg as usize + 3 - offset] = VertexData {
-            pos: window_ref.pos + cgmath::vec2(0.0, window_ref.size.y),
             uv: window_ref.params.texcoord[2],
             color: window_ref.params.color[2],
+        };
+        vbo_data[4 * window_ref.index_beg as usize + 3 - offset] = VertexData {
+            pos: window_ref.pos + cgmath::vec2(window_ref.size.x, 0.0),
+            uv: window_ref.params.texcoord[3],
+            color: window_ref.params.color[3],
         };
 
         for child in &window_ref.children {
