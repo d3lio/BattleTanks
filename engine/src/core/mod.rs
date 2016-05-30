@@ -8,6 +8,8 @@ mod entity;
 mod event_emitter;
 mod scene;
 
+pub mod input;
+
 pub use self::color::Color;
 
 pub use self::data_ptr::Data;
