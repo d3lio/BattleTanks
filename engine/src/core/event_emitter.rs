@@ -36,7 +36,7 @@ macro_rules! events {
 /// Single threaded event listener for the `EventEmitter`.
 ///
 /// Unlike other event emitter APIs, this listener implementation holds a closure and
-/// a contex that it will pass to the closure under the form of `&T`.<br>
+/// a context that it will pass to the closure under the form of `&T`.<br>
 /// You can think of this as a bound function just like what JavaScript's `bind` would produce.
 /// It gives us flexibility to call listeners that listen to the same event
 /// but operate on different data on top of the flat emitted data.
