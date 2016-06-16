@@ -35,14 +35,25 @@ pub use self::mask::KeyMask;
 ///
 /// Listens for individual key strokes as determined by their keycodes and is thus independent
 /// of the current keyboard layout the user has selected.
+///
+/// Received events are buffered in order to provide the following guarantees. For any given key: <br>
+/// The first event received will always be `Press`. <br>
+/// For every `Press` event there will be a matching `Release` event.
+///
+/// If the corresponding `Release` events have not been received when the listener loses focus, they will
+/// be triggered in an arbitrary order.
+///
 pub struct KeyListener {
-    subscribers: Vec<(KeyMask, Rc<Fn(glfw::Key, glfw::Scancode, glfw::Action)>, bool)>,
+    keys: KeyMask,
+    passtrough: bool,
+    callback: Box<Fn(glfw::Key, glfw::Scancode, glfw::Action)>,
+
+    pressed: KeyMask,
     manager: ManagerWeak,
 }
 
 struct _Manager {
     key_listeners: Vec<*mut KeyListener>,
-    window: *const glfw::Window,
 }
 
 /// Input event manager.
@@ -57,132 +68,154 @@ pub struct Manager (Rc<RefCell<_Manager>>);
 struct ManagerWeak (Option<Weak<RefCell<_Manager>>>);
 
 impl KeyListener {
-    /// Create a new `KeyListener`.
-    pub fn new() -> KeyListener {
+    /// Create a new listener.
+    ///
+    /// The listener will capture events for the specified keys in `keys` and will trigger the callback
+    /// function for each event.
+    ///
+    /// If `passtrough` is `false` event propagation will stop after this listener captures the event.
+    /// Set `passtrough` to `true` if you want the event to be propagated to other listeners down the chain.
+    ///
+    pub fn new<F> (keys: KeyMask, passtrough: bool, callback: F) -> KeyListener where
+        F: Fn(glfw::Key, glfw::Scancode, glfw::Action) + 'static
+    {
         KeyListener {
-            subscribers: Vec::new(),
+            keys: keys,
+            passtrough: passtrough,
+            callback: Box::new(callback),
+            pressed: KeyMask::new(),
             manager: ManagerWeak(None),
         }
     }
 
-    /// Set a callback for a set of keys.
+    /// Buffered input.
     ///
-    /// `keys` is the set of keys for who the callback will be triggered.
+    /// This method pool the state from the internal event buffer, meaning that only states of the keys
+    /// for which the callback function is listening are tracked.
     ///
-    /// `callback` is the callback function. It receives the keycode, system specific scan code
-    /// and the action - pressed, released or repeat.
-    ///
-    /// `passtrough` should be set to `true` if you want other listeners to receive the same event.
-    ///
-    pub fn on<F> (&mut self, keys: KeyMask, callback: Rc<F>, passtrough: bool) where
-        F: Fn(glfw::Key, glfw::Scancode, glfw::Action) + 'static
-    {
-        self.subscribers.push((keys, callback, passtrough));
+    pub fn key_pressed(&self, key: glfw::Key) -> bool {
+        self.pressed.check(key)
     }
 
-    /// Get the state of the key since the last polling of input events.
+    /// Notify the manager that the listener has gained focus.
     ///
-    /// This function follows the same rules as the event callbacks, i.e. listener
-    /// has to have focus and a callback function for `key` must have been set.
+    /// # Panics
     ///
-    /// The state of `key` will be returned only if a callback function for `key` from
-    /// this listener would have been called. In that case `true` is returned if the key
-    /// is pressed and `false` otherwise.
+    /// If the listener is currently on focus in a different manager.
     ///
-    /// In all other cases `false` is returned.
-    pub fn key_pressed(&self, key: glfw::Key) -> bool {
-        match self.manager.upgrade() {
-            Some(mgr) => mgr.key_unbuffered(self, key),
-            None => false,
+    pub fn gain_focus(&mut self, mgr: &Manager) {
+        if let Some(ref prev_mgr) = self.manager.upgrade() {
+            if prev_mgr != mgr {
+                panic!(ERR_DIFF_MANAGER);
+            }
+            return;
+        }
+
+        mgr.gain_key_focus(self);
+        self.manager = ManagerWeak(Some(Rc::downgrade(&mgr.0)));
+    }
+
+    /// Notify the manager that the listener has lost focus.
+    ///
+    /// The manager is stored internally, which is why it is not passed as a parameter.
+    /// If the listener was not under focus this method does nothing.
+    ///
+    pub fn lose_focus(&mut self) {
+        if let Some(mgr) = self.manager.upgrade() {
+            mgr.lose_key_focus(self);
+        }
+
+        for key in &self.pressed {
+            (self.callback)(key, 0, glfw::Action::Release);
+        }
+
+        self.pressed = KeyMask::new();
+        self.manager = ManagerWeak(None);
+    }
+
+    fn call(&mut self, key: glfw::Key, scancode: glfw::Scancode, action: glfw::Action) {
+        match action {
+            glfw::Action::Press => {
+                if !self.pressed.check(key) {
+                    self.pressed.set(key, true);
+                    (self.callback)(key, scancode, action);
+                }
+            },
+            glfw::Action::Repeat => {
+                if self.pressed.check(key) {
+                    (self.callback)(key, scancode, action);
+                }
+            }
+            glfw::Action::Release => {
+                if self.pressed.check(key) {
+                    self.pressed.set(key, false);
+                    (self.callback)(key, scancode, action);
+                }
+            }
         }
     }
 }
 
 impl Drop for KeyListener {
     fn drop(&mut self) {
-        if let Some(mgr) = self.manager.upgrade() {
-            mgr.lose_key_focus(self);
-        }
+        self.lose_focus();
     }
 }
 
 impl _Manager {
-    // FIXME: no lifetime checks
-    fn new (window: &glfw::Window) -> _Manager {
+    fn new () -> _Manager {
         _Manager {
             key_listeners: Vec::new(),
-            window: window as *const _,
         }
     }
 }
 
 impl Manager {
     /// Create a new manager.
-    ///
-    /// `window` is a handle to the window object that will be used for polling buffered input.
-    pub fn new(window: &glfw::Window) -> Manager {
-        Manager(wrap!(_Manager::new(window)))
-    }
-
-    /// Notify the manager that a listener has gained input focus.
-    ///
-    /// This puts the listener on the top of the stack.
-    pub fn gain_key_focus(&self, focus: &mut KeyListener) {
-        if let Some(mgr) = focus.manager.upgrade() {
-            mgr.lose_key_focus(focus);
-        }
-
-        self.0.borrow_mut().key_listeners.push(focus as *mut _);
-        focus.manager = ManagerWeak(Some(Rc::downgrade(&self.0)));
-    }
-
-    /// Notify the manager that a listener has gained input focus.
-    pub fn lose_key_focus(&self, focus: &mut KeyListener) {
-        let focus_ptr = focus as *mut _;
-        self.0.borrow_mut().key_listeners.retain(|&lptr| lptr != focus_ptr);
-        focus.manager = ManagerWeak(None);
+    pub fn new() -> Manager {
+        Manager(wrap!(_Manager::new()))
     }
 
     /// Feed the manager.
     pub fn emit_key(&self, key: glfw::Key, scancode: glfw::Scancode, action: glfw::Action) {
         unsafe {
             for &listener in self.0.borrow().key_listeners.iter().rev() {
-                for &(ref mask, ref callback, passtrough) in &(*listener).subscribers {
-                    if mask.check(key) {
-                        callback(key, scancode, action);
-                        if !passtrough {
-                            return;
-                        }
+                let listener = &mut (*listener);
+
+                if listener.keys.check(key) {
+                    listener.call(key, scancode, action);
+                    if !listener.passtrough {
+                        break;
                     }
                 }
             }
         }
     }
 
-    fn key_unbuffered(&self, listener: &KeyListener, key: glfw::Key) -> bool {
-        unsafe {
-            let mgr = self.0.borrow();
-
-            for &lptr in mgr.key_listeners.iter().rev() {
-                if lptr as *const _ == listener as *const _ {
-                    for &(ref mask, _, _) in &(*lptr).subscribers {
-                        if mask.check(key) {
-                            assert!(!mgr.window.is_null());
-                            return (*mgr.window).get_key(key) == glfw::Action::Press;
-                        }
-                    }
-
-                    return false;
-                }
-
-                for &(ref mask, _, passtrough) in &(*lptr).subscribers {
-                    if mask.check(key) && !passtrough {
-                      return false;
-                    }
-                }
+    fn gain_key_focus(&self, focus: &mut KeyListener) {
+        // If the user is currently holding a key the new listener will capture we must artificially
+        // release it now otherwise the `Release` event will be captured by the wrong listener.
+        // If not the extra releases will be ignored by the listeners.
+        // This also makes the behavior more consistent.
+        if !focus.passtrough {
+            for key in &focus.keys {
+                self.emit_key(key, 0, glfw::Action::Release);
             }
-            return false;
         }
+
+        self.0.borrow_mut().key_listeners.push(focus as *mut _);
+    }
+
+    fn lose_key_focus(&self, focus: &mut KeyListener) {
+        let focus_ptr = focus as *mut _;
+        self.0.borrow_mut().key_listeners.retain(|&lptr| lptr != focus_ptr);
+    }
+}
+
+impl Eq for Manager {}
+impl PartialEq for Manager {
+    fn eq(&self, other: &Manager) -> bool {
+        &*self.0 as *const RefCell<_> == &*other.0 as *const RefCell<_>
     }
 }
 
@@ -197,6 +230,8 @@ impl ManagerWeak {
         }
     }
 }
+
+const ERR_DIFF_MANAGER: &'static str = "KeyListener is already on focus in a different manager";
 
 #[cfg(test)]
 mod tests;
