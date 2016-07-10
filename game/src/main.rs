@@ -6,6 +6,7 @@ extern crate gl;
 
 use engine::gliw::{Gliw, DepthFunction, ProgramBuilder, Shader, ShaderType};
 use engine::core::{Camera, Renderable, Scene, Composition, Cuboid, Color, Event, Data};
+use engine::core::input::{Manager, KeyListener};
 use engine::overlay::{Overlay, Window, WindowParams};
 
 use cgmath::{Vector2, Vector3, Vector4, Point3, VectorSpace};
@@ -168,6 +169,18 @@ fn main() {
     wnd1.child("inner").unwrap().detach();
     wnd2.attach(&wnd3);
 
+    let window_ptr = &mut window as *mut glfw::Window;
+    let input_mgr = Manager::new();
+
+    let mut close_listener = KeyListener::new(key_mask![Key::Escape], false, move |_, _, action| {
+            if action == Action::Press {
+                unsafe { (*window_ptr).set_should_close(true); }
+            }
+        }
+    );
+
+    close_listener.gain_focus(&input_mgr);
+
     while !window.should_close() {
         Gliw::clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
         let mut time = glfw.get_time();
@@ -213,16 +226,11 @@ fn main() {
 
         glfw.poll_events();
         for (_, event) in glfw::flush_messages(&events) {
-            handle_window_event(&mut window, event);
+            match event {
+                glfw::WindowEvent::Key(key, scancode, action, _) => input_mgr.emit_key(key, scancode, action),
+                _ => {}
+            }
         }
     }
 }
 
-fn handle_window_event(window: &mut glfw::Window, event: glfw::WindowEvent) {
-    match event {
-        glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => {
-            window.set_should_close(true)
-        }
-        _ => {}
-    }
-}

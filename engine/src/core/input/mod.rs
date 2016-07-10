@@ -13,7 +13,7 @@
 //! It also keeps s stack of all listeners who are currently under focus, with the ones who most
 //! recently received focus being on the top of the stack.
 //!
-//! Events are send to the listeners in a capturing manner, starting at the top of the stack.
+//! Events are sent to the listeners in a capturing manner, starting at the top of the stack.
 //! The event is received by the listener closest to the top of the stack who has the corresponding
 //! callback function set. If that listener has the `passtrough` option set then that event is also
 //! passed to the listeners bellow him.
@@ -27,9 +27,6 @@ use std::cell::RefCell;
 use std::rc::{Rc, Weak};
 
 pub use self::mask::KeyMask;
-
-// TODO: keep track of all key pressed events received and fire the
-// corresponding key released events upon losing focus.
 
 /// Listener for keyboard input events.
 ///
@@ -46,10 +43,10 @@ pub use self::mask::KeyMask;
 pub struct KeyListener {
     keys: KeyMask,
     passtrough: bool,
-    callback: Box<Fn(glfw::Key, glfw::Scancode, glfw::Action)>,
+    callback: Box<FnMut(glfw::Key, glfw::Scancode, glfw::Action)>,
 
     pressed: KeyMask,
-    manager: ManagerWeak,
+    manager: Weak<RefCell<_Manager>>,
 }
 
 struct _Manager {
@@ -65,8 +62,6 @@ struct _Manager {
 /// Usually only a single instance of this class per game window should be created.
 pub struct Manager (Rc<RefCell<_Manager>>);
 
-struct ManagerWeak (Option<Weak<RefCell<_Manager>>>);
-
 impl KeyListener {
     /// Create a new listener.
     ///
@@ -77,14 +72,14 @@ impl KeyListener {
     /// Set `passtrough` to `true` if you want the event to be propagated to other listeners down the chain.
     ///
     pub fn new<F> (keys: KeyMask, passtrough: bool, callback: F) -> KeyListener where
-        F: Fn(glfw::Key, glfw::Scancode, glfw::Action) + 'static
+        F: FnMut(glfw::Key, glfw::Scancode, glfw::Action) + 'static
     {
         KeyListener {
             keys: keys,
             passtrough: passtrough,
             callback: Box::new(callback),
             pressed: KeyMask::new(),
-            manager: ManagerWeak(None),
+            manager: Weak::<_>::new(),
         }
     }
 
@@ -94,7 +89,7 @@ impl KeyListener {
     /// for which the callback function is listening are tracked.
     ///
     pub fn key_pressed(&self, key: glfw::Key) -> bool {
-        self.pressed.check(key)
+        self.pressed.get(key)
     }
 
     /// Notify the manager that the listener has gained focus.
@@ -104,15 +99,15 @@ impl KeyListener {
     /// If the listener is currently on focus in a different manager.
     ///
     pub fn gain_focus(&mut self, mgr: &Manager) {
-        if let Some(ref prev_mgr) = self.manager.upgrade() {
-            if prev_mgr != mgr {
+        if let Some(prev_mgr) = self.manager.upgrade() {
+            if &Manager(prev_mgr) != mgr {
                 panic!(ERR_DIFF_MANAGER);
             }
             return;
         }
 
         mgr.gain_key_focus(self);
-        self.manager = ManagerWeak(Some(Rc::downgrade(&mgr.0)));
+        self.manager = Rc::downgrade(&mgr.0);
     }
 
     /// Notify the manager that the listener has lost focus.
@@ -122,7 +117,7 @@ impl KeyListener {
     ///
     pub fn lose_focus(&mut self) {
         if let Some(mgr) = self.manager.upgrade() {
-            mgr.lose_key_focus(self);
+            Manager(mgr).lose_key_focus(self);
         }
 
         for key in &self.pressed {
@@ -130,24 +125,24 @@ impl KeyListener {
         }
 
         self.pressed = KeyMask::new();
-        self.manager = ManagerWeak(None);
+        self.manager = Weak::<_>::new();
     }
 
     fn call(&mut self, key: glfw::Key, scancode: glfw::Scancode, action: glfw::Action) {
         match action {
             glfw::Action::Press => {
-                if !self.pressed.check(key) {
+                if !self.pressed.get(key) {
                     self.pressed.set(key, true);
                     (self.callback)(key, scancode, action);
                 }
             },
             glfw::Action::Repeat => {
-                if self.pressed.check(key) {
+                if self.pressed.get(key) {
                     (self.callback)(key, scancode, action);
                 }
             }
             glfw::Action::Release => {
-                if self.pressed.check(key) {
+                if self.pressed.get(key) {
                     self.pressed.set(key, false);
                     (self.callback)(key, scancode, action);
                 }
@@ -182,7 +177,7 @@ impl Manager {
             for &listener in self.0.borrow().key_listeners.iter().rev() {
                 let listener = &mut (*listener);
 
-                if listener.keys.check(key) {
+                if listener.keys.get(key) {
                     listener.call(key, scancode, action);
                     if !listener.passtrough {
                         break;
@@ -193,7 +188,7 @@ impl Manager {
     }
 
     fn gain_key_focus(&self, focus: &mut KeyListener) {
-        // If the user is currently holding a key the new listener will capture we must artificially
+        // If the user is currently holding a key the new listener captures we must artificially
         // release it now otherwise the `Release` event will be captured by the wrong listener.
         // If not the extra releases will be ignored by the listeners.
         // This also makes the behavior more consistent.
@@ -216,18 +211,6 @@ impl Eq for Manager {}
 impl PartialEq for Manager {
     fn eq(&self, other: &Manager) -> bool {
         &*self.0 as *const RefCell<_> == &*other.0 as *const RefCell<_>
-    }
-}
-
-impl ManagerWeak {
-    fn upgrade(&self) -> Option<Manager> {
-        match self.0 {
-            Some(ref weak) => match weak.upgrade() {
-                Some(mgr_rc) => Some(Manager(mgr_rc)),
-                None => None,
-            },
-            None => None,
-        }
     }
 }
 

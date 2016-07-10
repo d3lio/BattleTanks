@@ -3,6 +3,8 @@ extern crate glfw;
 use std::iter::IntoIterator;
 use std::ops::Range;
 
+// TODO: use a bitmap
+
 /// A binary mask for the keys of the glfw::Key enum.
 ///
 /// A `KeyMask` object can also be created using the `key_mask!` macro.
@@ -48,7 +50,7 @@ impl KeyMask {
 
     /// Get the bit associated with a key.
     #[inline]
-    pub fn check(&self, key: glfw::Key) -> bool {
+    pub fn get(&self, key: glfw::Key) -> bool {
         self.mask[GLFW_KEY_MAP[key as usize] as usize]
     }
 }
