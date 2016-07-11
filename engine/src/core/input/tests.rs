@@ -16,7 +16,7 @@ fn events() {
 
     {
         let data = data.clone();
-        kl1 = KeyListener::new(key_mask![Key::Escape, Key::A, Key::B], false, move |_, _, action| {
+        kl1 = KeyListener::new(key_mask![Key::Escape, Key::A, Key::B], move |_, _, action| {
             if action == Action::Press {
                 data.set(data.get() + 1);
             }
@@ -25,7 +25,7 @@ fn events() {
 
     {
         let data = data.clone();
-        kl2 = KeyListener::new(key_mask![Key::Escape; Key::B .. Key::D], false, move |_, _, action| {
+        kl2 = KeyListener::new(key_mask![Key::Escape; Key::B .. Key::D], move |_, _, action| {
             if action == Action::Press {
                 data.set(data.get() + 10);
             }
@@ -97,7 +97,7 @@ fn passtrough() {
 
     {
         let data = data.clone();
-        kl1 = KeyListener::new(key_mask![Key::Escape], true, move |_, _, action| {
+        kl1 = KeyListener::with_passtrough(key_mask![Key::Escape], move |_, _, action| {
             if action == Action::Press {
                 data.set(data.get() + 1);
             }
@@ -106,7 +106,7 @@ fn passtrough() {
 
     {
         let data = data.clone();
-        kl2 = KeyListener::new(key_mask![Key::Escape], false, move |_, _, action| {
+        kl2 = KeyListener::new(key_mask![Key::Escape], move |_, _, action| {
             if action == Action::Press {
                 data.set(data.get() + 10);
             }
@@ -115,7 +115,7 @@ fn passtrough() {
 
     {
         let data = data.clone();
-        kl3 = KeyListener::new(key_mask![Key::Escape], true, move |_, _, action| {
+        kl3 = KeyListener::with_passtrough(key_mask![Key::Escape], move |_, _, action| {
             if action == Action::Press {
                 data.set(data.get() + 100);
             }
@@ -141,7 +141,7 @@ fn order() {
 
     {
         let data = data.clone();
-        kl1 = KeyListener::new(key_mask![Key::Escape], false, move |_, _, action| {
+        kl1 = KeyListener::new(key_mask![Key::Escape], move |_, _, action| {
             match action {
                 Action::Press => data.set(data.get() + 1),
                 Action::Repeat => data.set(data.get() - 1),
@@ -181,8 +181,8 @@ fn order() {
 #[test]
 fn buffered() {
     let mgr = Manager::new();
-    let mut kl1 = KeyListener::new(key_mask![Key::Escape], false, move |_, _, _| ());
-    let mut kl2 = KeyListener::new(key_mask![Key::Escape], false, move |_, _, _| ());
+    let mut kl1 = KeyListener::new(key_mask![Key::Escape], move |_, _, _| ());
+    let mut kl2 = KeyListener::new(key_mask![Key::Escape], move |_, _, _| ());
 
     kl1.gain_focus(&mgr);
     kl2.gain_focus(&mgr);
@@ -205,8 +205,8 @@ fn buffered() {
 #[test]
 fn forced_release() {
     let mgr = Manager::new();
-    let mut kl1 = KeyListener::new(key_mask![Key::A, Key::B], false, move |_, _, _| ());
-    let mut kl2 = KeyListener::new(key_mask![Key::A], false, move |_, _, _| ());
+    let mut kl1 = KeyListener::new(key_mask![Key::A, Key::B], move |_, _, _| ());
+    let mut kl2 = KeyListener::new(key_mask![Key::A], move |_, _, _| ());
 
     kl1.gain_focus(&mgr);
 

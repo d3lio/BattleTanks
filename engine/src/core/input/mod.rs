@@ -49,8 +49,30 @@ pub struct KeyListener {
     manager: Weak<RefCell<_Manager>>,
 }
 
+pub struct CharListener {
+    passtrough: bool,
+    callback: Box<FnMut(char)>,
+    manager: Weak<RefCell<_Manager>>,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum MouseEvent {
+    CursorPos(f64, f64),
+    CursorEnter(bool),
+    Button(glfw::MouseButton, glfw::Action, glfw::Modifiers),
+    Scroll(f64, f64),
+}
+
+pub struct MouseListener {
+    passtrough: bool,
+    callback: Box<FnMut(MouseEvent)>,
+    manager: Weak<RefCell<_Manager>>,
+}
+
 struct _Manager {
     key_listeners: Vec<*mut KeyListener>,
+    char_listeners: Vec<*mut CharListener>,
+    mouse_listeners: Vec<*mut MouseListener>,
 }
 
 /// Input event manager.
@@ -60,26 +82,39 @@ struct _Manager {
 /// are currently on focus.
 ///
 /// Usually only a single instance of this class per game window should be created.
+#[derive(Clone)]
 pub struct Manager (Rc<RefCell<_Manager>>);
 
 impl KeyListener {
     /// Create a new listener.
     ///
-    /// The listener will capture events for the specified keys in `keys` and will trigger the callback
-    /// function for each event.
-    ///
-    /// If `passtrough` is `false` event propagation will stop after this listener captures the event.
-    /// Set `passtrough` to `true` if you want the event to be propagated to other listeners down the chain.
-    ///
-    pub fn new<F> (keys: KeyMask, passtrough: bool, callback: F) -> KeyListener where
+    /// The listener will capture events for the specified keys in `keys` and will trigger
+    /// the callback function for each event.
+    pub fn new<F> (keys: KeyMask, callback: F) -> KeyListener where
         F: FnMut(glfw::Key, glfw::Scancode, glfw::Action) + 'static
     {
         KeyListener {
             keys: keys,
-            passtrough: passtrough,
+            passtrough: false,
             callback: Box::new(callback),
             pressed: KeyMask::new(),
-            manager: Weak::<_>::new(),
+            manager: Weak::new(),
+        }
+    }
+
+    /// Create a new listener with the passtrough parameter set.
+    ///
+    /// With passtrough enabled events captured by this listener will also be propagated
+    /// to other listeners down the chain.
+    pub fn with_passtrough<F> (keys: KeyMask, callback: F) -> KeyListener where
+        F: FnMut(glfw::Key, glfw::Scancode, glfw::Action) + 'static
+    {
+        KeyListener {
+            keys: keys,
+            passtrough: true,
+            callback: Box::new(callback),
+            pressed: KeyMask::new(),
+            manager: Weak::new(),
         }
     }
 
@@ -100,13 +135,23 @@ impl KeyListener {
     ///
     pub fn gain_focus(&mut self, mgr: &Manager) {
         if let Some(prev_mgr) = self.manager.upgrade() {
-            if &Manager(prev_mgr) != mgr {
+            if !mgr.same(&Manager(prev_mgr)) {
                 panic!(ERR_DIFF_MANAGER);
             }
             return;
         }
 
-        mgr.gain_key_focus(self);
+        // If the user is currently holding a key the new listener captures we must artificially
+        // release it now otherwise the `Release` event will be captured by the wrong listener.
+        // If not the extra releases will be ignored by the listeners.
+        // This also makes the behavior more consistent.
+        if !self.passtrough {
+            for key in &self.keys {
+                mgr.emit_key(key, 0, glfw::Action::Release);
+            }
+        }
+
+        mgr.0.borrow_mut().key_listeners.push(self as *mut _);
         self.manager = Rc::downgrade(&mgr.0);
     }
 
@@ -117,7 +162,8 @@ impl KeyListener {
     ///
     pub fn lose_focus(&mut self) {
         if let Some(mgr) = self.manager.upgrade() {
-            Manager(mgr).lose_key_focus(self);
+            let focus_ptr = self as *mut _;
+            mgr.borrow_mut().key_listeners.retain(|&lptr| lptr != focus_ptr);
         }
 
         for key in &self.pressed {
@@ -125,7 +171,7 @@ impl KeyListener {
         }
 
         self.pressed = KeyMask::new();
-        self.manager = Weak::<_>::new();
+        self.manager = Weak::new();
     }
 
     fn call(&mut self, key: glfw::Key, scancode: glfw::Scancode, action: glfw::Action) {
@@ -157,10 +203,118 @@ impl Drop for KeyListener {
     }
 }
 
+impl CharListener {
+    pub fn new<F> (callback: F) -> CharListener where
+        F: FnMut(char) + 'static
+    {
+        CharListener {
+            passtrough: false,
+            callback: Box::new(callback),
+            manager: Weak::new(),
+        }
+    }
+
+    pub fn with_passtrough<F> (callback: F) -> CharListener where
+        F: FnMut(char) + 'static
+    {
+        CharListener {
+            passtrough: true,
+            callback: Box::new(callback),
+            manager: Weak::new(),
+        }
+    }
+
+    pub fn gain_focus(&mut self, mgr: &Manager) {
+        if let Some(prev_mgr) = self.manager.upgrade() {
+            if !mgr.same(&Manager(prev_mgr)) {
+                panic!(ERR_DIFF_MANAGER);
+            }
+            return;
+        }
+
+        mgr.0.borrow_mut().char_listeners.push(self as *mut _);
+        self.manager = Rc::downgrade(&mgr.0);
+    }
+
+    pub fn lose_focus(&mut self) {
+        if let Some(mgr) = self.manager.upgrade() {
+            let focus_ptr = self as *mut _;
+            mgr.borrow_mut().char_listeners.retain(|&lptr| lptr != focus_ptr);
+        }
+
+        self.manager = Weak::new();
+    }
+
+    fn call(&mut self, codepoint: char) {
+        (*self.callback)(codepoint);
+    }
+}
+
+impl Drop for CharListener {
+    fn drop(&mut self) {
+        self.lose_focus();
+    }
+}
+
+impl MouseListener {
+    pub fn new<F> (callback: F) -> MouseListener where
+        F: FnMut(MouseEvent) + 'static
+    {
+        MouseListener {
+            passtrough: true,
+            callback: Box::new(callback),
+            manager: Weak::new(),
+        }
+    }
+
+    pub fn with_passtrough<F> (callback: F) -> MouseListener where
+        F: FnMut(MouseEvent) + 'static
+    {
+        MouseListener {
+            passtrough: true,
+            callback: Box::new(callback),
+            manager: Weak::new(),
+        }
+    }
+
+    pub fn gain_focus(&mut self, mgr: &Manager) {
+        if let Some(prev_mgr) = self.manager.upgrade() {
+            if !mgr.same(&Manager(prev_mgr)) {
+                panic!(ERR_DIFF_MANAGER);
+            }
+            return;
+        }
+
+        mgr.0.borrow_mut().mouse_listeners.push(self as *mut _);
+        self.manager = Rc::downgrade(&mgr.0);
+    }
+
+    pub fn lose_focus(&mut self) {
+        if let Some(mgr) = self.manager.upgrade() {
+            let focus_ptr = self as *mut _;
+            mgr.borrow_mut().mouse_listeners.retain(|&lptr| lptr != focus_ptr);
+        }
+
+        self.manager = Weak::new();
+    }
+
+    fn call(&mut self, event: MouseEvent) {
+        (*self.callback)(event);
+    }
+}
+
+impl Drop for MouseListener {
+    fn drop(&mut self) {
+        self.lose_focus();
+    }
+}
+
 impl _Manager {
     fn new () -> _Manager {
         _Manager {
             key_listeners: Vec::new(),
+            char_listeners: Vec::new(),
+            mouse_listeners: Vec::new(),
         }
     }
 }
@@ -175,7 +329,7 @@ impl Manager {
     pub fn emit_key(&self, key: glfw::Key, scancode: glfw::Scancode, action: glfw::Action) {
         unsafe {
             for &listener in self.0.borrow().key_listeners.iter().rev() {
-                let listener = &mut (*listener);
+                let listener = &mut *listener;
 
                 if listener.keys.get(key) {
                     listener.call(key, scancode, action);
@@ -187,34 +341,39 @@ impl Manager {
         }
     }
 
-    fn gain_key_focus(&self, focus: &mut KeyListener) {
-        // If the user is currently holding a key the new listener captures we must artificially
-        // release it now otherwise the `Release` event will be captured by the wrong listener.
-        // If not the extra releases will be ignored by the listeners.
-        // This also makes the behavior more consistent.
-        if !focus.passtrough {
-            for key in &focus.keys {
-                self.emit_key(key, 0, glfw::Action::Release);
+    pub fn emit_char(&self, codepoint: char) {
+        unsafe {
+            for &listener in self.0.borrow().char_listeners.iter().rev() {
+                let listener = &mut *listener;
+
+                listener.call(codepoint);
+                if !listener.passtrough {
+                    break;
+                }
             }
         }
-
-        self.0.borrow_mut().key_listeners.push(focus as *mut _);
     }
 
-    fn lose_key_focus(&self, focus: &mut KeyListener) {
-        let focus_ptr = focus as *mut _;
-        self.0.borrow_mut().key_listeners.retain(|&lptr| lptr != focus_ptr);
-    }
-}
+    pub fn emit_mouse_event(&self, event: MouseEvent) {
+        unsafe {
+            for &listener in self.0.borrow().mouse_listeners.iter().rev() {
+                let listener = &mut *listener;
 
-impl Eq for Manager {}
-impl PartialEq for Manager {
-    fn eq(&self, other: &Manager) -> bool {
+                listener.call(event);
+                if !listener.passtrough {
+                    break;
+                }
+            }
+        }
+    }
+
+    /// Two `Manager`s are the same if they are `Rc`s to the same inner data.
+    fn same(&self, other: &Manager) -> bool {
         &*self.0 as *const RefCell<_> == &*other.0 as *const RefCell<_>
     }
 }
 
-const ERR_DIFF_MANAGER: &'static str = "KeyListener is already on focus in a different manager";
+const ERR_DIFF_MANAGER: &'static str = "Listener is already on focus in a different manager";
 
 #[cfg(test)]
 mod tests;

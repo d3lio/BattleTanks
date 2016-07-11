@@ -6,7 +6,7 @@ extern crate gl;
 
 use engine::gliw::{Gliw, DepthFunction, ProgramBuilder, Shader, ShaderType};
 use engine::core::{Camera, Renderable, Scene, Composition, Cuboid, Color, Event, Data};
-use engine::core::input::{Manager, KeyListener};
+use engine::core::input::{Manager, KeyListener, CharListener};
 use engine::overlay::{Overlay, Window, WindowParams};
 
 use cgmath::{Vector2, Vector3, Vector4, Point3, VectorSpace};
@@ -35,6 +35,11 @@ fn main() {
 
     window.make_current();
     window.set_key_polling(true);
+    window.set_char_polling(true);
+    window.set_mouse_button_polling(true);
+    window.set_cursor_pos_polling(true);
+    window.set_cursor_enter_polling(true);
+    window.set_scroll_polling(true);
     glfw.set_swap_interval(1);
 
     gl::load_with(|symbol| window.get_proc_address(symbol) as *const _);
@@ -172,14 +177,26 @@ fn main() {
     let window_ptr = &mut window as *mut glfw::Window;
     let input_mgr = Manager::new();
 
-    let mut close_listener = KeyListener::new(key_mask![Key::Escape], false, move |_, _, action| {
+    let mut close_listener = KeyListener::new(key_mask![Key::Escape], move |_, _, action| {
             if action == Action::Press {
                 unsafe { (*window_ptr).set_should_close(true); }
             }
         }
     );
-
     close_listener.gain_focus(&input_mgr);
+
+    let mut char_listener = CharListener::new(|codepoint| print!{"{}", codepoint});
+    char_listener.gain_focus(&input_mgr);
+
+    let mut special_char_listener = {
+        let input_mgr = input_mgr.clone();
+        KeyListener::new(key_mask![Key::Enter], move |key, _, action| {
+            if key == Key::Enter && action == Action::Press || action == Action::Repeat {
+                input_mgr.emit_char('\n');
+            }
+        })
+    };
+    special_char_listener.gain_focus(&input_mgr);
 
     while !window.should_close() {
         Gliw::clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
@@ -228,6 +245,7 @@ fn main() {
         for (_, event) in glfw::flush_messages(&events) {
             match event {
                 glfw::WindowEvent::Key(key, scancode, action, _) => input_mgr.emit_key(key, scancode, action),
+                glfw::WindowEvent::Char(codepoint) => input_mgr.emit_char(codepoint),
                 _ => {}
             }
         }
