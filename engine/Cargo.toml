@@ -8,6 +8,7 @@ authors = [
 [dependencies]
 gl = "^0.6.0"
 cgmath = "^0.9.1"
+bit-vec = "^0.4.3"
 
 [dependencies.glfw]
 version = "^0.5.0"

@@ -1,26 +1,17 @@
 extern crate glfw;
+extern crate bit_vec;
 
 use std::any::Any;
 use std::iter::IntoIterator;
 use std::ops::Range;
-
-// TODO: use a bitmap
+use self::bit_vec::BitVec;
 
 /// A binary mask for the keys of the glfw::Key enum.
 ///
 /// A `KeyMask` object can also be created using the `key_mask!` macro.
+#[derive(Clone, Debug)]
 pub struct KeyMask {
-    mask: [bool; GLFW_KEY_COUNT],
-}
-
-// derive(Clone, Copy) fails because they are not defined for [bool; 120]
-impl Copy for KeyMask {}
-impl Clone for KeyMask {
-    fn clone(&self) -> KeyMask {
-        KeyMask {
-            mask: self.mask
-        }
-    }
+    mask: BitVec,
 }
 
 impl KeyMask {
@@ -36,7 +27,7 @@ impl KeyMask {
     ///
     pub fn new(keys: &[&Any]) -> KeyMask {
         let mut mask = KeyMask {
-            mask: [false; GLFW_KEY_COUNT],
+            mask: BitVec::from_elem(GLFW_KEY_COUNT, false),
         };
 
         for item in keys {
@@ -57,7 +48,7 @@ impl KeyMask {
     /// Set the bit associated with a key.
     #[inline]
     pub fn set(&mut self, key: glfw::Key, val: bool) {
-        self.mask[GLFW_TO_INT_MAP[key as usize] as usize] = val;
+        self.mask.set(GLFW_TO_INT_MAP[key as usize] as usize, val);
     }
 
     /// Set the bits associated with a range of keys.
@@ -67,7 +58,7 @@ impl KeyMask {
         for key in range.start as usize .. range.end as usize + 1 {
             let index = GLFW_TO_INT_MAP[key];
             if index != -1 {
-                self.mask[index as usize] = val;
+                self.mask.set(index as usize, val);
             }
         }
     }
@@ -75,7 +66,7 @@ impl KeyMask {
     /// Get the bit associated with a key.
     #[inline]
     pub fn get(&self, key: glfw::Key) -> bool {
-        self.mask[GLFW_TO_INT_MAP[key as usize] as usize]
+        self.mask.get(GLFW_TO_INT_MAP[key as usize] as usize).unwrap()
     }
 }
 
@@ -84,7 +75,7 @@ impl<'a> IntoIterator for &'a KeyMask {
     type IntoIter = Box<Iterator<Item=glfw::Key> + 'a>;
 
     fn into_iter(self) -> Self::IntoIter {
-        Box::new((0 .. GLFW_KEY_COUNT).filter(move |&i| self.mask[i] == true).map(|i| INT_TO_GLFW_MAP[i]))
+        Box::new((0 .. GLFW_KEY_COUNT).filter(move |&i| self.mask.get(i).unwrap() == true).map(|i| INT_TO_GLFW_MAP[i]))
     }
 }
 
