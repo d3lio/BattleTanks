@@ -25,7 +25,7 @@ fn events() {
 
     {
         let data = data.clone();
-        kl2 = KeyListener::new(key_mask![Key::Escape; Key::B .. Key::D], move |_, _, action| {
+        kl2 = KeyListener::new(key_mask![Key::Escape, Key::B .. Key::D], move |_, _, action| {
             if action == Action::Press {
                 data.set(data.get() + 10);
             }

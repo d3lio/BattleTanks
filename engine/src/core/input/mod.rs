@@ -97,7 +97,7 @@ impl KeyListener {
             keys: keys,
             passtrough: false,
             callback: Box::new(callback),
-            pressed: KeyMask::new(),
+            pressed: key_mask![],
             manager: Weak::new(),
         }
     }
@@ -113,7 +113,7 @@ impl KeyListener {
             keys: keys,
             passtrough: true,
             callback: Box::new(callback),
-            pressed: KeyMask::new(),
+            pressed: key_mask![],
             manager: Weak::new(),
         }
     }
@@ -170,7 +170,7 @@ impl KeyListener {
             (self.callback)(key, 0, glfw::Action::Release);
         }
 
-        self.pressed = KeyMask::new();
+        self.pressed = key_mask![];
         self.manager = Weak::new();
     }
 

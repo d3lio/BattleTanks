@@ -1,5 +1,6 @@
 extern crate glfw;
 
+use std::any::Any;
 use std::iter::IntoIterator;
 use std::ops::Range;
 
@@ -23,17 +24,40 @@ impl Clone for KeyMask {
 }
 
 impl KeyMask {
-    /// Create a new mask with all bits set to false.
-    pub fn new() -> KeyMask {
-        KeyMask {
+    /// Create a new KeyMask.
+    ///
+    /// The respective bits for keys specified in `keys` are set to `true`,
+    /// all other bits are set to `false`. The `keys` slice must contain elements
+    /// of type `&glfw::Key` or `&std::ops::Range<glfw::Key>`.
+    ///
+    /// # Panics
+    ///
+    /// If `keys` contains an element with type other than `&glfw::Key` or `&std::ops::Range<glfw::Key>`.
+    ///
+    pub fn new(keys: &[&Any]) -> KeyMask {
+        let mut mask = KeyMask {
             mask: [false; GLFW_KEY_COUNT],
+        };
+
+        for item in keys {
+            if let Some(key) = item.downcast_ref::<glfw::Key>() {
+                mask.set(key.clone(), true);
+            }
+            else if let Some(range) = item.downcast_ref::<Range<glfw::Key>>() {
+                mask.set_range(range.clone(), true);
+            }
+            else {
+                panic!(ERR_INVALID_TYPE);
+            }
         }
+
+        mask
     }
 
     /// Set the bit associated with a key.
     #[inline]
     pub fn set(&mut self, key: glfw::Key, val: bool) {
-        self.mask[GLFW_KEY_MAP[key as usize] as usize] = val;
+        self.mask[GLFW_TO_INT_MAP[key as usize] as usize] = val;
     }
 
     /// Set the bits associated with a range of keys.
@@ -41,7 +65,7 @@ impl KeyMask {
     /// `range` is inclusive, that is a range `Key::A .. Key::Z` will include `Key::A` and `Key::Z`.
     pub fn set_range(&mut self, range: Range<glfw::Key>, val: bool) {
         for key in range.start as usize .. range.end as usize + 1 {
-            let index = GLFW_KEY_MAP[key];
+            let index = GLFW_TO_INT_MAP[key];
             if index != -1 {
                 self.mask[index as usize] = val;
             }
@@ -51,7 +75,7 @@ impl KeyMask {
     /// Get the bit associated with a key.
     #[inline]
     pub fn get(&self, key: glfw::Key) -> bool {
-        self.mask[GLFW_KEY_MAP[key as usize] as usize]
+        self.mask[GLFW_TO_INT_MAP[key as usize] as usize]
     }
 }
 
@@ -60,7 +84,7 @@ impl<'a> IntoIterator for &'a KeyMask {
     type IntoIter = Box<Iterator<Item=glfw::Key> + 'a>;
 
     fn into_iter(self) -> Self::IntoIter {
-        Box::new((0 .. GLFW_KEY_COUNT).filter(move |&i| self.mask[i] == true).map(|i| GLFW_REV_KEY_MAP[i]))
+        Box::new((0 .. GLFW_KEY_COUNT).filter(move |&i| self.mask[i] == true).map(|i| INT_TO_GLFW_MAP[i]))
     }
 }
 
@@ -78,34 +102,27 @@ impl<'a> IntoIterator for &'a KeyMask {
 /// let km1 = key_mask![Key::F1, Key::F2, Key::F3];
 ///
 /// // has the bits for keys Space, Enter, [A; Z] (inclusive) and [0; 9] (inclusive) set
-/// let km2 = key_mask![Key::Space, Key::Enter; Key::A .. Key::Z, Key::Num0 .. Key::Num9];
+/// let km2 = key_mask![Key::Space, Key::A .. Key::Z, Key::Enter, Key::Num0 .. Key::Num9];
 /// # }
 /// ```
 #[macro_export]
 macro_rules! key_mask {
     () => (
-        KeyMask::new()
+        KeyMask::new(&[])
     );
 
-    ( $( $key:expr ),* ) => (
-        key_mask![$( $key ),* ;]
-    );
-
-    ( $( $key:expr ),* ; $( $range:expr ),* ) => ({
+    ( $( $item:expr ),* ) => ({
         use $crate::core::input::KeyMask;
+        use std::any::Any;
 
-        let mut mask = KeyMask::new();
-        $( mask.set($key, true); )*
-        $( mask.set_range($range, true); )*
-
-        mask
+        KeyMask::new(Vec::<&Any>::as_slice(&vec![ $( & $item ),* ]))
     })
 }
 
 // TODO: see if we can make this less hardcoded by using `const fn`.
 
 /// A mapping of the glfw::Key enum to continuous numbers
-const GLFW_KEY_MAP: [i16; glfw::ffi::KEY_LAST as usize + 1] = [
+const GLFW_TO_INT_MAP: [i16; glfw::ffi::KEY_LAST as usize + 1] = [
      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,   0,  -1,  -1,  -1,  -1,  -1,  -1,   1,
      -1,  -1,  -1,  -1,   2,   3,   4,   5,   6,   7,   8,   9,  10,  11,  12,  13,  14,  15,  -1,  16,
@@ -127,7 +144,7 @@ const GLFW_KEY_MAP: [i16; glfw::ffi::KEY_LAST as usize + 1] = [
 ];
 
 /// A mapping of continuous numbers to the glfw::Key enum
-const GLFW_REV_KEY_MAP: [glfw::Key; GLFW_KEY_COUNT] = [
+const INT_TO_GLFW_MAP: [glfw::Key; GLFW_KEY_COUNT] = [
     glfw::Key::Space,
     glfw::Key::Apostrophe,
     glfw::Key::Comma,
@@ -252,3 +269,5 @@ const GLFW_REV_KEY_MAP: [glfw::Key; GLFW_KEY_COUNT] = [
 
 /// Number of entries in the glfw enum
 const GLFW_KEY_COUNT: usize = 120;
+
+const ERR_INVALID_TYPE: &'static str = "Slice element has invalid type: expected &glfw::Key or &std::ops::Range<glfw::Key>";
