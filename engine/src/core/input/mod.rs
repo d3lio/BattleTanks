@@ -52,6 +52,7 @@ pub struct KeyListener {
 pub struct CharListener {
     passtrough: bool,
     callback: Box<FnMut(char)>,
+    key_listener: KeyListener,
     manager: Weak<RefCell<_Manager>>,
 }
 
@@ -210,6 +211,9 @@ impl CharListener {
         CharListener {
             passtrough: false,
             callback: Box::new(callback),
+            key_listener: KeyListener::new(
+                key_mask![glfw::Key::Space .. glfw::Key::GraveAccent, glfw::Key::Kp0 .. glfw::Key::KpEqual],
+                |_, _, _| ()),
             manager: Weak::new(),
         }
     }
@@ -220,6 +224,9 @@ impl CharListener {
         CharListener {
             passtrough: true,
             callback: Box::new(callback),
+            key_listener: KeyListener::with_passtrough(
+                key_mask![glfw::Key::Space .. glfw::Key::GraveAccent, glfw::Key::Kp0 .. glfw::Key::KpEqual],
+                |_, _, _| ()),
             manager: Weak::new(),
         }
     }
@@ -232,6 +239,8 @@ impl CharListener {
             return;
         }
 
+        self.key_listener.gain_focus(mgr);
+
         mgr.0.borrow_mut().char_listeners.push(self as *mut _);
         self.manager = Rc::downgrade(&mgr.0);
     }
@@ -240,6 +249,8 @@ impl CharListener {
         if let Some(mgr) = self.manager.upgrade() {
             let focus_ptr = self as *mut _;
             mgr.borrow_mut().char_listeners.retain(|&lptr| lptr != focus_ptr);
+
+            self.key_listener.lose_focus();
         }
 
         self.manager = Weak::new();
